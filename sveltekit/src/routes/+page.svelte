@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
     import PocketBase from 'pocketbase';
+
 	import PdfPoster from '../lib/components/PdfPoster.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 
 	import PdfViewer from 'svelte-pdf';
 
     import type { Proyecto } from '$lib/types/alltypes';
-    import { get } from 'svelte/store';
 
     const pb = new PocketBase('http://127.0.0.1:8090');
 
@@ -19,6 +20,8 @@
 	let searchTerm = '';
 	let loading = true;
 	let error = '';
+	let showModal = false;
+	let selectedPlay: Proyecto | null = null;
 
 	// Función para cargar obras desde PocketBase
 	async function fetchPlays(): Promise<Proyecto[]> {
@@ -64,7 +67,6 @@
 		if (play.programa) {
 			try {
 				const url = pb.files.getURL(play, play.programa, { thumb: '100x250' });
-				console.log('URL del programa:', url);
 				return url;
 			} catch (e) {
 				console.error('Error obteniendo URL del programa:', e);
@@ -75,7 +77,9 @@
 
 	// Manejar clic en obra
 	function handlePlayClick(play: Proyecto) {
-		window.open(getProgramaUrl(play), '_blank');
+		selectedPlay = play;
+		showModal = true;
+		//window.open(getProgramaUrl(play), '_blank');
 		// Aquí puedes navegar a una página de detalles o abrir un modal
 		//alert(`Detalles de la obra: ${play.nombre}\n\nEsta funcionalidad se puede expandir para mostrar más información.`);
 	}
@@ -105,7 +109,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-5">
-	<div class="mx-auto max-w-6xl rounded-3xl bg-white/95 p-6 shadow-2xl backdrop-blur-sm md:p-10">
+	<div class="mx-auto max-w-7xl rounded-3xl bg-white/95 p-6 shadow-2xl backdrop-blur-sm md:p-10">
 		<!-- Header -->
 		<header class="mb-8 text-center">
 			<h1 class="mb-6 text-4xl font-bold text-gray-800 md:text-5xl">
@@ -160,7 +164,7 @@
 							<span class="absolute bottom-0 left-0 h-1 w-24 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></span>
 						</h2>
 						
-						<div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+						<div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
 							{#each groupedPlays[year] as play (play.id)}
 								<!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 								<article
@@ -174,7 +178,7 @@
 										<PdfPoster
 											showTopButton={false}
 											showBorder={false}
-											scale={0.5}
+											maxHeight={320}
 											url={getProgramaUrl(play)} />
 										<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
 									</div>
@@ -198,6 +202,46 @@
 		</main>
 	</div>
 </div>
+<Modal bind:showModal >
+    {#snippet header()}
+        <h2 class="text-2xl font-bold text-gray-800">
+            {selectedPlay ? selectedPlay.nombre : 'Detalles de la obra'}
+        </h2>
+    {/snippet}
+
+    <div>
+        {#if selectedPlay}
+            <div class="flex flex-col md:flex-row gap-6 mt-4">
+                <!-- PDF a la izquierda -->
+                <div class="md:w-1/2 w-full">
+					<PdfPoster
+						showTopButton={false}
+						showBorder={false}
+						maxHeight={320}
+						url={getProgramaUrl(selectedPlay)} />
+						<!--
+						<PdfViewer
+							url={getProgramaUrl(selectedPlay)}
+							class="h-96 w-full"
+							showDownloadButton={true}
+						/>
+						-->
+                </div>
+                <!-- Info a la derecha -->
+                <div class="md:w-1/2 w-full flex flex-col justify-center">
+                    <p class="text-gray-600 mb-4">
+                        <strong>Grupo:</strong> {selectedPlay.grupo_nombre}<br />
+                        <strong>Año:</strong> {selectedPlay.anio}<br />
+                        <strong>Descripción:</strong> {selectedPlay.sinopsis || 'No disponible'}
+                    </p>
+                    <!-- Puedes agregar más información aquí si lo deseas -->
+                </div>
+            </div>
+        {:else}
+            <p class="text-gray-600">Selecciona una obra para ver los detalles.</p>
+        {/if}
+    </div>
+</Modal>
 
 <style>
 	@keyframes fade-in {

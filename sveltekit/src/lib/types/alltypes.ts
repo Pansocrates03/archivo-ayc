@@ -4,6 +4,7 @@ export interface Proyecto {
     anio: number;
     sinopsis: string;
     programa: string;
+    grupo_nombre: string;
 }
 
 export interface ProyectoDetalle {
