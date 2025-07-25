@@ -19,7 +19,8 @@
   export let showBorder = true;
   export let totalPage = 0;
   export let showTopButton = true;
-  export let onProgress = undefined;
+  export let onProgress: Function | undefined = undefined;
+  export let maxHeight: number = 0;
 
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.mjs',
@@ -40,20 +41,28 @@
   let passwordError = false;
   let passwordMessage = '';
   let isInitialized = false;
+  let containerWidth = 0;
+  let internalScale = 1;
 
   const renderPage = async (num: number) => {
     if (num < 1 || num > pageCount) return;
     pageRendering = true;
     try {
       const page = await pdfDoc.getPage(num);
-      const viewport = page.getViewport({ scale, rotation });
+      // Calculate viewport scale based on both width and height
+      const viewport = page.getViewport({ scale: 1 });
+      const scaleX = containerWidth / viewport.width;
+      const scaleY = maxHeight / viewport.height;
+      internalScale = Math.min(scaleX, scaleY) || 1;
+
+      const scaledViewport = page.getViewport({ scale: internalScale, rotation });
       const canvasContext = canvas.getContext('2d');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+      canvas.height = scaledViewport.height;
+      canvas.width = scaledViewport.width;
 
       const renderContext = {
         canvasContext,
-        viewport,
+        viewport: scaledViewport,
       };
       await page.render(renderContext).promise;
 
@@ -75,7 +84,7 @@
       // Update page counters
       showButtons.length ? (pageNum = num) : null;
     } catch (error) {
-      console.error("Error rendering page:", error);
+      console.log("Error rendering page:", error);
       pageRendering = false;
     }
   };
@@ -89,12 +98,15 @@
   // Calculate reading time based on content length
   const initialLoad = async () => {
     try {
-      const loadingTask = pdfjs.getDocument({
-        ...(url && { url }),
-        ...(data && { data }),
-        ...(password && { password }),
-      });
-      loadingTask.onProgress = onProgress;
+      const params: { url?: string; data?: any; password?: string } = {};
+      if (url) params.url = url;
+      if (data) params.data = data;
+      if (password) params.password = password;
+
+      const loadingTask = pdfjs.getDocument(params);
+      if (onProgress) {
+        loadingTask.onProgress = onProgress;
+      }
 
       pdfDoc = await loadingTask.promise;
       passwordError = false;
@@ -104,6 +116,14 @@
       totalPage = pdfDoc.numPages;
 
       isInitialized = true;
+
+      // Get the first page to calculate initial scale
+      const firstPage = await pdfDoc.getPage(1);
+      const viewport = firstPage.getViewport({ scale: 1 }); // Get original size
+      const scaleX = containerWidth / viewport.width;
+      const scaleY = maxHeight / viewport.height;
+      internalScale = Math.min(scaleX, scaleY) || 1;
+
       renderPage(currentPage);
     } catch (error:any) {
       passwordError = true;
@@ -112,6 +132,16 @@
   };
 
   initialLoad();
+
+  $: if (containerWidth && pdfDoc && maxHeight) {
+    pdfDoc.getPage(1).then((page: any) => {
+      const viewport = page.getViewport({ scale: 1 });
+      const scaleX = containerWidth / viewport.width;
+      const scaleY = maxHeight / viewport.height;
+      internalScale = Math.min(scaleX, scaleY) || 1;
+      renderPage(currentPage);
+    });
+  }
 
   // $: if (isInitialized) queueRenderPage(pageNum);
 
@@ -144,12 +174,16 @@
     {:else if showButtons.length}
       <div class="control-start">
         <div class={showBorder === true ? 'viewer' : 'null'}>
-          <canvas bind:this={canvas} width={pageWidth} height={pageHeight}></canvas>
+          <div bind:clientWidth={containerWidth} style="width: 100%;">
+            <canvas bind:this={canvas}></canvas>
+          </div>
         </div>
       </div>
     {:else}
       <div class={showBorder === true ? 'viewer' : 'null'}>
-        <canvas bind:this={canvas}></canvas>
+        <div bind:clientWidth={containerWidth} style="width: 100%;">
+          <canvas bind:this={canvas}></canvas>
+        </div>
         <!-- width={window.innerWidth} -->
         <!-- height={window.innerHeight}  -->
       </div>

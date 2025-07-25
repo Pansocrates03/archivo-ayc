@@ -5,3 +5,8 @@
 </script>
 
 {@render children()}
+
+
+<style>
+	:global(.tabactive)
+</style>

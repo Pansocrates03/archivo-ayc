@@ -24,6 +24,7 @@
 		"vite-plugin-devtools-json": "^0.2.0"
 	},
 	"dependencies": {
+		"flowbite-svelte": "^1.10.20",
 		"pdfjs-dist": "^4.0.269",
 		"pocketbase": "^0.26.1",
 		"svelte-pdf": "^1.0.28"
