@@ -15,7 +15,11 @@
 	onclick={(e) => { if (e.target === dialog) dialog.close(); }}
 >
 	<div>
-		{@render header?.()}
+		<div>
+			<h2 class="text-2xl font-bold text-gray-800">
+            {header}
+        	</h2>
+		</div>
 		<hr />
 		{@render children?.()}
 		<hr />
@@ -30,7 +34,7 @@
 
 <style>
 	dialog {
-		max-width: 32em;
+		max-width: 80vw;
 		border-radius: 0.2em;
 		border: none;
 		padding: 0;
@@ -46,17 +50,7 @@
 	dialog > div {
 		padding: 1em;
 	}
-	dialog[open] {
-		animation: zoom 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-	}
-	@keyframes zoom {
-		from {
-			transform: scale(0.95);
-		}
-		to {
-			transform: scale(1);
-		}
-	}
+	
 	dialog[open]::backdrop {
 		animation: fade 0.2s ease-out;
 	}

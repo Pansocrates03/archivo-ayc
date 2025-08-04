@@ -7,6 +7,8 @@
 
 	import PdfViewer from 'svelte-pdf';
 
+	import LazyPoster from '$lib/components/LazyPoster.svelte';
+
     import type { Proyecto } from '$lib/types/alltypes';
 
     const pb = new PocketBase('http://127.0.0.1:8090');
@@ -64,15 +66,7 @@
 	}
 
 	function getProgramaUrl(play: Proyecto): string {
-		if (play.programa) {
-			try {
-				const url = pb.files.getURL(play, play.programa, { thumb: '100x250' });
-				return url;
-			} catch (e) {
-				console.error('Error obteniendo URL del programa:', e);
-			}
-		}
-		return 'https://via.placeholder.com/400x600?text=No+Image';
+		return pb.files.getURL(play, play.programa);
 	}
 
 	// Manejar clic en obra
@@ -175,7 +169,7 @@
 									tabindex="0"
 								>
 									<div class="relative overflow-hidden max-h-80 ">
-										<PdfPoster
+										<LazyPoster
 											showTopButton={false}
 											showBorder={false}
 											maxHeight={320}
@@ -202,12 +196,11 @@
 		</main>
 	</div>
 </div>
-<Modal bind:showModal >
-    {#snippet header()}
-        <h2 class="text-2xl font-bold text-gray-800">
-            {selectedPlay ? selectedPlay.nombre : 'Detalles de la obra'}
-        </h2>
-    {/snippet}
+<Modal
+	bind:showModal
+	header={selectedPlay ? selectedPlay.nombre : 'Detalles de la obra'}
+	>
+	{#key selectedPlay}
 
     <div>
         {#if selectedPlay}
@@ -218,6 +211,7 @@
 						showTopButton={false}
 						showBorder={false}
 						maxHeight={320}
+						scale={1}
 						url={getProgramaUrl(selectedPlay)} />
 						<!--
 						<PdfViewer
@@ -241,6 +235,7 @@
             <p class="text-gray-600">Selecciona una obra para ver los detalles.</p>
         {/if}
     </div>
+	{/key}
 </Modal>
 
 <style>
