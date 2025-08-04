@@ -6,7 +6,6 @@
     export let showTopButton = false;
     export let showBorder = false;
     export let maxHeight = 320;
-    export let scale = 1;
 
     let visible = false;
     let el: HTMLDivElement;
@@ -33,7 +32,6 @@
             {showTopButton}
             {showBorder}
             {maxHeight}
-            {scale}
         />
     {/if}
 </div>

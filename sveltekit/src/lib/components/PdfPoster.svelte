@@ -4,7 +4,6 @@
 
   export let url;
   export let data = null;
-  export let scale = 1.8;
   export let pageNum = 1;
   export let showButtons = [
     'navigation',
