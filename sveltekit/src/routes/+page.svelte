@@ -10,6 +10,11 @@
     const pb = new PocketBase('http://127.0.0.1:8090');
     const thumbnailService = new ThumbnailService();
 
+    interface Grupo {
+        id: string;
+        nombre: string;
+    }
+
     interface GroupedPlays {
         [year: number]: Proyecto[];
     }
@@ -22,6 +27,8 @@
     let allPlays: ProyectoWithThumbnail[] = [];
     let filteredPlays: ProyectoWithThumbnail[] = [];
     let searchTerm = '';
+    let selectedGroup: string = ''; // Nuevo estado para el grupo seleccionado
+    let allGroups: Grupo[] = []; // Nuevo estado para todos los grupos
     let loading = true;
     let error = '';
     let showModal = false;
@@ -43,6 +50,18 @@
             
         } catch (err) {
             throw new Error('Error al cargar las obras');
+        }
+    }
+
+    // Nueva función para cargar grupos
+    async function fetchGroups(): Promise<Grupo[]> {
+        try {
+            return await pb.collection('grupos').getFullList({
+                sort: 'nombre',
+            });
+        } catch (err) {
+            console.error('Error al cargar los grupos:', err);
+            return [];
         }
     }
 
@@ -88,14 +107,23 @@
 		return grouped;
 	}
 
-	// Filtrar obras por búsqueda
-	function filterPlays(plays: Proyecto[], search: string): Proyecto[] {
-		if (!search.trim()) {
-			return plays;
+	// Filtrar obras por búsqueda y grupo
+	function filterPlays(plays: Proyecto[], search: string, group: string): Proyecto[] {
+		let tempPlays = plays;
+
+		// Filtrar por término de búsqueda
+		if (search.trim()) {
+			tempPlays = tempPlays.filter(play => 
+				play.nombre.toLowerCase().includes(search.toLowerCase())
+			);
 		}
-		return plays.filter(play => 
-			play.nombre.toLowerCase().includes(search.toLowerCase())
-		);
+
+		// Filtrar por grupo seleccionado
+		if (group) {
+			tempPlays = tempPlays.filter(play => play.grupo_nombre === group);
+		}
+
+		return tempPlays;
 	}
 
 	function getProgramaUrl(play: Proyecto): string {
@@ -115,7 +143,7 @@
 	}
 
 	// Reactive statements
-	$: filteredPlays = filterPlays(allPlays, searchTerm);
+	$: filteredPlays = filterPlays(allPlays, searchTerm, selectedGroup);
 	$: groupedPlays = groupPlaysByYear(filteredPlays);
 	$: sortedYears = Object.keys(groupedPlays).map(Number).sort((a, b) => b - a);
 
@@ -125,6 +153,7 @@
 			loading = true;
 			error = '';
 			allPlays = await fetchPlays();
+            allGroups = await fetchGroups(); // Cargar todos los grupos
 			generateAllThumbnails();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Error desconocido';
@@ -148,7 +177,7 @@
                 🎭 Archivo de Arte y Cultura Tec
             </h1>
             
-            <div class="mx-auto max-w-md">
+            <div class="mx-auto max-w-md space-y-4">
                 <div class="relative">
                     <input
                         type="text"
@@ -157,6 +186,19 @@
                         class="w-full rounded-full border-2 border-gray-200 bg-white px-6 py-4 text-lg shadow-lg transition-all duration-300 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:-translate-y-1"
                     />
                     <span class="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                </div>
+                <!-- Nuevo filtro por grupo -->
+                <div class="relative">
+                    <select
+                        bind:value={selectedGroup}
+                        class="w-full rounded-full border-2 border-gray-200 bg-white px-6 py-4 text-lg shadow-lg transition-all duration-300 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:-translate-y-1 appearance-none pr-10"
+                    >
+                        <option value="">Filtrar por grupo</option>
+                        {#each allGroups as group (group.id)}
+                            <option value={group.nombre}>{group.nombre}</option>
+                        {/each}
+                    </select>
+                    <span class="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">▼</span>
                 </div>
             </div>
         </header>
@@ -181,7 +223,7 @@
             {:else if filteredPlays.length === 0}
                 <div class="rounded-xl bg-gray-50 p-8 text-center">
                     <p class="text-xl text-gray-600">
-                        {searchTerm ? 'No se encontraron obras que coincidan con tu búsqueda' : 'No hay obras disponibles'}
+                        {searchTerm || selectedGroup ? 'No se encontraron obras que coincidan con tu búsqueda o filtro de grupo' : 'No hay obras disponibles'}
                     </p>
                 </div>
             {:else}
