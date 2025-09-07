@@ -1,4 +1,3 @@
-// 1. Crear un servicio para generar miniaturas
 // ThumbnailService.ts
 
 import * as pdfjs from 'pdfjs-dist';
