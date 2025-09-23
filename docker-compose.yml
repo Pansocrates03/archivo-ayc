@@ -1,0 +1,26 @@
+# /docker-compose.yml
+
+version: '3.8'
+
+services:
+  # Servicio para el backend de PocketBase
+  pocketbase:
+    image: pocketbase/pocketbase
+    container_name: pocketbase
+    restart: always
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./pocketbase:/pb/data
+
+  # Servicio para el frontend de Svelte
+  svelte-frontend:
+    build:
+      context: ./svelte-app
+      dockerfile: Dockerfile
+    container_name: svelte-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - pocketbase # Asegura que PocketBase se inicie primero
