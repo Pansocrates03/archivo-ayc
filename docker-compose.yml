@@ -5,7 +5,7 @@ version: '3.8'
 services:
   # Servicio para el backend de PocketBase
   pocketbase:
-    image: pocketbase/pocketbase
+    image: ghcr.io/muchobien/pocketbase
     container_name: pocketbase
     restart: always
     ports:
