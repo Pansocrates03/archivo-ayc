@@ -9,7 +9,7 @@
     import type { Proyecto, Grupo } from './lib/types/alltypes';
     import Header from './lib/components/Header.svelte';
     
-    const pb = new PocketBase('http://127.0.0.1:8090');
+    const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
     const thumbnailService = new ThumbnailService();
     
     interface GroupedPlays { [year: number]: ProyectoWithThumbnail[] }
