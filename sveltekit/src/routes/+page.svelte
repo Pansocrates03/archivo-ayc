@@ -19,7 +19,7 @@
         [year: number]: Proyecto[];
     }
 
-    interface ProyectoWithThumbnail extends Proyecto {
+    interface ProyectoWithThumbnail extends Proyecto {  
         thumbnail?: string;
         thumbnailLoading?: boolean;
     }

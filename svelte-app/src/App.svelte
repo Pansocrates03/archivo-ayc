@@ -123,6 +123,14 @@
             window.open(getProgramaUrl(selectedPlay), '_blank');
         }
     }
+
+    function getEstrenoDate(play: ProyectoWithThumbnail): string {
+        if (play.estreno) {
+            const date = new Date(play.estreno);
+            return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        return play.anio.toString();
+    }
     
     // Reactive statements
     $: filteredPlays = filterPlays(allPlays, searchTerm, selectedGroup);
@@ -284,8 +292,8 @@
                         <span class="text-gray-600 ml-2">{selectedPlay.grupo_nombre}</span>
                     </div>
                     <div>
-                        <strong class="text-gray-800">Año:</strong>
-                        <span class="text-gray-600 ml-2">{selectedPlay.anio}</span>
+                        <strong class="text-gray-800">Estreno:</strong>
+                        <span class="text-gray-600 ml-2">{getEstrenoDate(selectedPlay)}</span>                        
                     </div>
                     <div>
                         <strong class="text-gray-800">Descripción:</strong>

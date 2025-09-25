@@ -2,6 +2,7 @@ export interface Proyecto {
     id: string;
     nombre: string;
     anio: number;
+    estreno: any;
     sinopsis: string;
     programa: string;
     grupo_nombre: string;
