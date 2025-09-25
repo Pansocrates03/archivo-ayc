@@ -7,55 +7,28 @@
     import Modal from "./lib/components/Modal.svelte";
     import { ThumbnailService } from './lib/services/ThumbnailService';
     import { lazyThumbnail } from './lib/actions/lazyThumbnail';
-    import type { Proyecto, Grupo } from './lib/types/alltypes';
+    import type { Proyecto, Grupo, Persona } from './lib/types/alltypes';
     import Header from './lib/components/Header.svelte';
+    import type { ProyectoWithThumbnail } from './lib/types/alltypes';
+    import { fetchPeople, fetchPlays, fetchGroups } from './lib/services/DatabaseService';
     
     const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
     const thumbnailService = new ThumbnailService();
     
     interface GroupedPlays { [year: number]: ProyectoWithThumbnail[] }
     
-    interface ProyectoWithThumbnail extends Proyecto {
-        thumbnail?: string;
-        thumbnailLoading?: boolean
-    }
     
+    // Variables
     let allPlays: ProyectoWithThumbnail[] = [];
     let filteredPlays: ProyectoWithThumbnail[] = [];
     let searchTerm = '';
     let selectedGroup: string = ''; // Nuevo estado para el grupo seleccionado
     let allGroups: Grupo[] = []; // Nuevo estado para todos los grupos
+    let allPeople: Persona[] = [];
     let loading = true;
     let error = '';
     let showModal = false;
     let selectedPlay: ProyectoWithThumbnail | null = null;
-    let elencos = {}
-    
-    // Función para cargar obras desde PocketBase
-    async function fetchPlays(): Promise<ProyectoWithThumbnail[]> {
-        try {
-            const proyectos: Proyecto[] = await pb.collection('vista_proyecto_grupo').getFullList({ sort: '-anio' });
-    
-            // Agregar propiedades para thumbnails
-            return proyectos.map((proyecto) => ({
-                ...proyecto,
-                thumbnail: undefined,
-                thumbnailLoading: false
-            }));
-        } catch(err) {
-            throw new Error('Error al cargar las obras');
-        }
-    }
-    
-    // Nueva función para cargar grupos
-    async function fetchGroups(): Promise<Grupo[]> {
-        try {
-            return await pb.collection('grupos').getFullList({ sort: 'nombre' });
-        } catch(err) {
-            console.error('Error al cargar los grupos:', err);
-            return [];
-        }
-    }
     
     // Agrupar obras por año
     function groupPlaysByYear(plays: ProyectoWithThumbnail[]): GroupedPlays {
@@ -121,14 +94,6 @@
             }
         }
 
-        // Obtener al elenco
-        /*
-        if(elencos[play.id]){}
-        else {
-            elencos[play.id] = fetchElenco(play.id)
-        }
-            */
-
     }
     
     function openPrograma() {
@@ -144,6 +109,21 @@
         }
         return play.anio.toString();
     }
+
+    // Devuelve una cadena con los nombres del elenco separados por comas
+    function getElencoNames(play: ProyectoWithThumbnail | null): string {
+        if (!play || !play.elenco || !Array.isArray(play.elenco) || !allPeople) return 'No disponible';
+
+        const names = play.elenco.map((pid) => {
+            console.log(allPeople)
+            const person = allPeople.find(p => p.id === pid);
+            return person?.nombre ?? 'Desconocido';
+        });
+
+        // Filtrar valores vacíos y unir
+        const filtered = names.filter(n => n && n.trim().length > 0);
+        return filtered.length ? filtered.join(', ') : 'No disponible';
+    }
     
     // Reactive statements
     $: filteredPlays = filterPlays(allPlays, searchTerm, selectedGroup);
@@ -157,6 +137,7 @@
             error = '';
             allPlays = await fetchPlays();
             allGroups = await fetchGroups(); // Cargar todos los grupos
+            allPeople = await fetchPeople();
         } catch(err) {
             error = err instanceof Error ? err.message : 'Error desconocido';
         } finally {
@@ -309,9 +290,9 @@
                         <span class="text-gray-600 ml-2">{getEstrenoDate(selectedPlay)}</span>                        
                     </div>
                     <div>
-                        <strong class="text-gray-800">Descripción:</strong>
+                        <strong class="text-gray-800">Elenco:</strong>
                         <p class="text-gray-600 mt-2 leading-relaxed">
-                            {selectedPlay.sinopsis || 'No disponible'}
+                            {getElencoNames(selectedPlay)}
                         </p>
                     </div>
                 </div>

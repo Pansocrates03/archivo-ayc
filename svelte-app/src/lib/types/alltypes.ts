@@ -2,7 +2,8 @@ export interface Proyecto {
     id: string;
     nombre: string;
     anio: number;
-    estreno: any;
+    estreno: string;
+    elenco: any;
     sinopsis: string;
     programa: string;
     grupo_nombre: string;
@@ -33,3 +34,14 @@ export interface ProyectoDetalle {
 }
 
 export interface Grupo { id: string; nombre: string; presentadopor?: string }
+
+export interface Persona {
+    id: string;
+    nombre: string;
+    matricula: string;
+}
+
+export interface ProyectoWithThumbnail extends Proyecto {
+    thumbnail?: string;
+    thumbnailLoading?: boolean
+}
