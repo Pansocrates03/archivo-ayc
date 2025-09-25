@@ -11,7 +11,10 @@ COPY package.json package-lock.json ./
 # Instala dependencias
 RUN npm install
 
-# Copia el código fuente
+# Copia el archivo .env antes de compilar
+COPY .env .
+
+# Copia el resto del código fuente
 COPY . .
 
 # Compila la aplicación
