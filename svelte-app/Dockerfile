@@ -1,7 +1,7 @@
 # /svelte-app/Dockerfile
 
 # Etapa 1: Compilación
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Copia la aplicación compilada a la carpeta de Nginx
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Expón el puerto
 EXPOSE 80
