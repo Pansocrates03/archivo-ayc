@@ -1,5 +1,6 @@
 
 <script lang="ts">
+    // IMPORTS
     import './app.css';
     import { onMount } from 'svelte';
     import PocketBase from 'pocketbase';
@@ -28,6 +29,7 @@
     let error = '';
     let showModal = false;
     let selectedPlay: ProyectoWithThumbnail | null = null;
+    let elencos = {}
     
     // Función para cargar obras desde PocketBase
     async function fetchPlays(): Promise<ProyectoWithThumbnail[]> {
@@ -94,6 +96,8 @@
     function getProgramaUrl(play: ProyectoWithThumbnail): string {
         return pb.files.getURL(play, play.programa);
     }
+
+
     
     // Manejar clic en obra
     async function handlePlayClick(play: ProyectoWithThumbnail) {
@@ -116,6 +120,15 @@
                 if (selectedPlay && selectedPlay.id === play.id) selectedPlay = play;
             }
         }
+
+        // Obtener al elenco
+        /*
+        if(elencos[play.id]){}
+        else {
+            elencos[play.id] = fetchElenco(play.id)
+        }
+            */
+
     }
     
     function openPrograma() {
