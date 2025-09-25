@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Servicio para el backend de PocketBase
   pocketbase:
     image: ghcr.io/muchobien/pocketbase
     container_name: pocketbase
@@ -9,10 +8,9 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ./pocketbase/pb_data:/pb/data  # ← Cambio aquí: añadido /pb_data
-    user: "0:0"  # Para evitar problemas de permisos
+      - /root/archivo-ayc/pocketbase/pb_data:/pb/data  # Ruta ABSOLUTA
+    user: "0:0"
 
-  # Servicio para el frontend de Svelte
   svelte-frontend:
     build:
       context: ./svelte-app
