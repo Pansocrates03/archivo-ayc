@@ -20,11 +20,13 @@
     
     // Variables
     let allPlays: ProyectoWithThumbnail[] = [];
+    let allGroups: Grupo[] = []; // Nuevo estado para todos los grupos
+    let allPeople: Persona[] = [];
+    
     let filteredPlays: ProyectoWithThumbnail[] = [];
     let searchTerm = '';
     let selectedGroup: string = ''; // Nuevo estado para el grupo seleccionado
-    let allGroups: Grupo[] = []; // Nuevo estado para todos los grupos
-    let allPeople: Persona[] = [];
+    
     let loading = true;
     let error = '';
     let showModal = false;
