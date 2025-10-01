@@ -13,7 +13,8 @@
     import { fetchPeople, fetchPlays, fetchGroups } from './lib/services/DatabaseService';
     
     // Leer variable Vite; usar fallback local para desarrollo.
-    const VITE_POCKETBASE_URL = "pocketbase-production-f5d2.up.railway.app"
+    const VITE_POCKETBASE_URL = "https://pocketbase-production-f5d2.up.railway.app"
+    console.log("Connecting to pocketbase at:", VITE_POCKETBASE_URL)
     const pb = new PocketBase(VITE_POCKETBASE_URL);
     const thumbnailService = new ThumbnailService();
     
