@@ -10,13 +10,15 @@ COPY package.json package-lock.json ./
 # Instala dependencias
 RUN npm install
 
-# Copia el archivo .env antes de compilar
-#COPY .env . # Se elimina esta linea para railway
-
-# Copia el resto del código fuente
+# Copia el resto del cdigo fuente
 COPY . .
 
-# Compila la aplicación
+# Permitir inyectar la variable VITE_POCKETBASE_URL en tiempo de build
+# Railway (u otros proveedores) pueden pasar este valor como build arg / env var.
+ARG VITE_POCKETBASE_URL
+RUN echo "VITE_POCKETBASE_URL=${VITE_POCKETBASE_URL}" > .env
+
+# Compila la aplicacin (Vite leer .env durante el build)
 RUN npm run build
 
 # Etapa 2: Servir la aplicación

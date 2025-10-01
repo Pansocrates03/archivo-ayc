@@ -1,12 +1,13 @@
 import PocketBase from 'pocketbase';
-const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
+const pb = new PocketBase('https://pocketbase-production-f5d2.up.railway.app');
 
 import type { Proyecto, Grupo, Persona, ProyectoWithThumbnail } from '../types/alltypes';
 
 export async function fetchPlays(): Promise<ProyectoWithThumbnail[]> {
+    console.log("Fetching plays")
     try {
         const proyectos: Proyecto[] = await pb.collection('vista_proyecto_grupo').getFullList({ sort: '-anio' });
-
+        console.log("Res:", proyectos)
         // Agregar propiedades para thumbnails
         return proyectos.map((proyecto) => ({
             ...proyecto,
