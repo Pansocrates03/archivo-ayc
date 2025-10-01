@@ -11,7 +11,7 @@ COPY package.json package-lock.json ./
 RUN npm install
 
 # Copia el archivo .env antes de compilar
-COPY .env .
+#COPY .env . # Se elimina esta linea para railway
 
 # Copia el resto del código fuente
 COPY . .

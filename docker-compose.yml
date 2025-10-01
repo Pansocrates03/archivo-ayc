@@ -1,16 +1,6 @@
 version: '3.8'
 
 services:
-  pocketbase:
-    image: ghcr.io/muchobien/pocketbase
-    container_name: pocketbase
-    restart: always
-    ports:
-      - "8090:8090"
-    volumes:
-      - /root/archivo-ayc/pocketbase/pb_data:/pb/data  # Ruta ABSOLUTA
-    user: "0:0"
-
   svelte-frontend:
     build:
       context: ./svelte-app
