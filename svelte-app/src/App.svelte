@@ -12,8 +12,8 @@
     import type { ProyectoWithThumbnail } from './lib/types/alltypes';
     import { fetchPeople, fetchPlays, fetchGroups } from './lib/services/DatabaseService';
     
-    const VITE_POCKETBASE_URL = import.meta.env.VITE_POCKETBASE_URL;
-    console.log("Connecting to", VITE_POCKETBASE_URL)
+    // Leer variable Vite; usar fallback local para desarrollo.
+    const VITE_POCKETBASE_URL = "pocketbase-production-f5d2.up.railway.app"
     const pb = new PocketBase(VITE_POCKETBASE_URL);
     const thumbnailService = new ThumbnailService();
     
@@ -217,7 +217,7 @@
                                                     play.thumbnailLoading = true;
                                                     allPlays = [...allPlays];
                                                 },
-                                                onLoaded: (dataUrl: string) => {
+                                                onLoaded: (dataUrl) => {
                                                     play.thumbnail = dataUrl;
                                                     play.thumbnailLoading = false;
                                                     allPlays = [...allPlays];
