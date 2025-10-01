@@ -12,7 +12,9 @@
     import type { ProyectoWithThumbnail } from './lib/types/alltypes';
     import { fetchPeople, fetchPlays, fetchGroups } from './lib/services/DatabaseService';
     
-    const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
+    const VITE_POCKETBASE_URL = import.meta.env.VITE_POCKETBASE_URL;
+    console.log("Connecting to", VITE_POCKETBASE_URL)
+    const pb = new PocketBase(VITE_POCKETBASE_URL);
     const thumbnailService = new ThumbnailService();
     
     interface GroupedPlays { [year: number]: ProyectoWithThumbnail[] }
