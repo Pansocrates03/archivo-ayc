@@ -2,18 +2,17 @@
 <script lang="ts">
     // IMPORTS
     import './app.css';
-    import { onMount } from 'svelte';
-    import PocketBase from 'pocketbase';
+    import { onMount, onDestroy } from 'svelte';
     import Modal from "./lib/components/Modal.svelte";
+    import ProjectDetailsModal from './lib/components/ProjectDetailsModal.svelte';
     import { ThumbnailService } from './lib/services/ThumbnailService';
     import { lazyThumbnail } from './lib/actions/lazyThumbnail';
     import type { Proyecto, Grupo, Persona } from './lib/types/alltypes';
     import Header from './lib/components/Header.svelte';
     import type { ProyectoWithThumbnail } from './lib/types/alltypes';
-    import { fetchPeople, fetchPlays, fetchGroups } from './lib/services/DatabaseService';
+    import { fetchPeople, fetchPlays, fetchGroups, getProgramaUrl, getGalleryUrl, getGalleryThumbUrl } from './lib/services/DatabaseService';
     
     // Leer variable Vite; usar fallback local para desarrollo.
-    const pb = new PocketBase('https://pocketbase-production-f5d2.up.railway.app');
     const thumbnailService = new ThumbnailService();
     
     interface GroupedPlays { [year: number]: ProyectoWithThumbnail[] }
@@ -32,6 +31,17 @@
     let error = '';
     let showModal = false;
     let selectedPlay: ProyectoWithThumbnail | null = null;
+    // Galería: paginación simple para mostrar solo una "línea" a la vez
+    let galleryPage = 0;
+    let galleryPageSize = 3; // se calculará responsive
+
+    function computeGalleryPageSize(width: number) {
+        // Ajusta estos breakpoints según diseño
+        if (width < 640) return 2;       // móvil
+        if (width < 1024) return 3;      // tablet/pequeño desktop
+        if (width < 1400) return 4;      // desktop mediano
+        return 5;                        // pantallas grandes
+    }
     
     // Agrupar obras por año
     function groupPlaysByYear(plays: ProyectoWithThumbnail[]): GroupedPlays {
@@ -69,15 +79,13 @@
         return tempPlays;
     }
     
-    function getProgramaUrl(play: ProyectoWithThumbnail): string {
-        return pb.files.getURL(play, play.programa);
-    }
 
 
     
     // Manejar clic en obra
     async function handlePlayClick(play: ProyectoWithThumbnail) {
         selectedPlay = play;
+        galleryPage = 0; // resetear a la primera fila al abrir modal
         showModal = true;
 
         // Si la miniatura no se ha generado (por lazy load), generarla para el modal
@@ -105,6 +113,64 @@
         }
     }
 
+    function openGalleryImage(url: string) {
+        window.open(url, '_blank');
+    }
+
+    function getCurrentGallerySlice() {
+        if (!selectedPlay || !selectedPlay.galeria) return [];
+        const start = galleryPage * galleryPageSize;
+        return selectedPlay.galeria.slice(start, start + galleryPageSize);
+    }
+
+    function nextGalleryPage() {
+        if (!selectedPlay || !selectedPlay.galeria) return;
+        const maxPage = Math.floor((selectedPlay.galeria.length - 1) / galleryPageSize);
+        if (galleryPage < maxPage) galleryPage += 1;
+    }
+
+    function prevGalleryPage() {
+        if (galleryPage > 0) galleryPage -= 1;
+    }
+
+    // Preload thumbnails for the next page when galleryPage or selectedPlay changes
+    $: if (selectedPlay) {
+        const maxPage = selectedPlay.galeria ? Math.floor((selectedPlay.galeria.length - 1) / galleryPageSize) : -1;
+        const nextPage = Math.min(maxPage, galleryPage + 1);
+        if (nextPage > galleryPage && selectedPlay.galeria) {
+            const start = nextPage * galleryPageSize;
+            const slice = selectedPlay.galeria.slice(start, start + galleryPageSize);
+            // Preload each thumb
+            for (const imgName of slice) {
+                const img = new Image();
+                img.src = getGalleryThumbUrl(selectedPlay, imgName, 320, 240, 60);
+            }
+        }
+    }
+
+    onMount(() => {
+        // establecer tamaño inicial y listener responsive
+        galleryPageSize = computeGalleryPageSize(window.innerWidth);
+
+        const onResize = () => {
+            const newSize = computeGalleryPageSize(window.innerWidth);
+            if (newSize !== galleryPageSize) {
+                galleryPageSize = newSize;
+                // resetear página para evitar overflow
+                galleryPage = 0;
+            }
+        };
+
+        window.addEventListener('resize', onResize);
+
+        return () => window.removeEventListener('resize', onResize);
+    });
+
+    onDestroy(() => {
+        // en caso de que onMount no limpie por alguna razón
+        try { window.removeEventListener('resize', () => {}); } catch(e) {}
+    });
+
     function getEstrenoDate(play: ProyectoWithThumbnail): string {
         if (play.estreno) {
             const date = new Date(play.estreno);
@@ -118,7 +184,6 @@
         if (!play || !play.elenco || !Array.isArray(play.elenco) || !allPeople) return 'No disponible';
 
         const names = play.elenco.map((pid) => {
-            console.log(allPeople)
             const person = allPeople.find(p => p.id === pid);
             return person?.nombre ?? 'Desconocido';
         });
@@ -254,56 +319,5 @@
 </div>
 
 
-<!-- 4. Modal ultra simple -->
-<Modal
-    bind:showModal
-    onclose={() => selectedPlay = null}
-    onopen={() => {}}
-    header={selectedPlay ? selectedPlay.nombre : 'Detalles de la obra'}
->
-    {#if selectedPlay}
-        <div class="flex flex-col md:flex-row gap-6">
-            <!-- Imagen PNG a la izquierda -->
-            <div class="md:w-1/2 w-full">
-                <button on:click={openPrograma} class="block w-full">
-                    {#if selectedPlay.thumbnail}
-                        <img 
-                            src={selectedPlay.thumbnail} 
-                            alt={selectedPlay.nombre}
-                            class="w-full max-w-sm mx-auto rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-                        />
-                        <p class="text-sm text-gray-500 text-center mt-2">Clic para abrir PDF completo</p>
-                    {:else}
-                        <div class="w-full max-w-sm h-80 mx-auto bg-gray-200 rounded-lg flex items-center justify-center">
-                            <span class="text-gray-500">Vista previa no disponible</span>
-                        </div>
-                    {/if}
-                </button>
-            </div>
-            
-            <!-- Info a la derecha -->
-            <div class="md:w-1/2 w-full flex flex-col justify-center">
-                <div class="space-y-4">
-                    <div>
-                        <strong class="text-gray-800">Grupo:</strong>
-                        <span class="text-gray-600 ml-2">{selectedPlay.grupo_nombre}</span>
-                    </div>
-                    <div>
-                        <strong class="text-gray-800">Estreno:</strong>
-                        <span class="text-gray-600 ml-2">{getEstrenoDate(selectedPlay)}</span>                        
-                    </div>
-                    <div>
-                        <strong class="text-gray-800">Elenco:</strong>
-                        <p class="text-gray-600 mt-2 leading-relaxed">
-                            {getElencoNames(selectedPlay)}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    {:else}
-        <div class="w-full flex items-center justify-center py-12">
-            <p class="text-gray-600">Selecciona una obra para ver los detalles.</p>
-        </div>
-    {/if}
-</Modal>
+<!-- Project details modal component -->
+<ProjectDetailsModal bind:showModal={showModal} play={selectedPlay} people={allPeople} on:close={() => selectedPlay = null} />

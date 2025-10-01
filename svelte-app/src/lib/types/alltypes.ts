@@ -7,6 +7,7 @@ export interface Proyecto {
     sinopsis: string;
     programa: string;
     grupo_nombre: string;
+    galeria: string[];
 }
 
 export interface ProyectoDetalle {
