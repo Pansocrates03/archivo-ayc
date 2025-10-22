@@ -28,6 +28,10 @@
     let selectedGroup: string = '';
     let loading = true;
     let error = '';
+    
+    // Debounce timer
+    let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const DEBOUNCE_DELAY = 500; // 500ms delay
 
     function groupPlaysByYear(plays: ProjectPreview[]): GroupedPlays {
         const grouped: GroupedPlays = {};
@@ -40,7 +44,7 @@
 
     function filterPlays(plays: ProjectPreview[], search: string, group: string): ProjectPreview[] {
         let tempPlays = plays;
-        if (search.trim()) tempPlays = tempPlays.filter((p) => p.nombre.toLowerCase().includes(search.toLowerCase()));
+        // Solo filtrar por grupo localmente, la búsqueda se hace en el servidor
         if (group) tempPlays = tempPlays.filter((p) => p.grupo_id === group);
         return tempPlays;
     }
@@ -53,10 +57,19 @@
     $: groupedPlays = groupPlaysByYear(filteredPlays);
     $: sortedYears = Object.keys(groupedPlays).map(Number).sort((a, b) => b - a);
 
-    async function loadPage(p: number) {
+    // track the current active search term used for server queries
+    let activeSearch = '';
+
+    async function loadPage(p: number, search = '') {
         try {
             loadingMore = true;
-            const res = await fetchProjectsPreview(p);
+            
+            // use provided search, fallback to activeSearch
+            const searchQuery = search || activeSearch;
+            const res = await fetchProjectsPreview(p, searchQuery);
+
+            // Si llegamos aquí, la búsqueda fue exitosa - limpiar error
+            error = '';
 
             // Append new items instead of replacing
             if (p === 1) {
@@ -70,10 +83,61 @@
             hasMore = allPlays.length < totalItems;
         } catch (err) {
             console.error('Error cargando página de obras:', err);
-            if (!error) error = err instanceof Error ? err.message : 'Error desconocido';
+            const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
+            
+            // Solo mostrar error si es la primera página o no hay datos
+            if (p === 1) {
+                error = errorMsg;
+                allPlays = [];
+                hasMore = false;
+            } else {
+                // Para páginas subsecuentes, solo log el error
+                console.warn('Error en paginación, manteniendo datos existentes');
+            }
         } finally {
             loadingMore = false;
             console.log('[pagination] loadPage done', p, 'hasMore=', hasMore);
+        }
+    }
+
+    // Función para realizar búsqueda en vivo
+    async function performLiveSearch(search: string) {
+        try {
+            console.log('[live-search] Buscando:', search);
+            activeSearch = search;
+            page = 1;
+            hasMore = true;
+            // loadPage manejará el estado de error internamente
+            await loadPage(1, search);
+        } catch (err) {
+            console.error('[live-search] Error:', err);
+            // El error ya fue manejado en loadPage
+        }
+    }
+
+    // Reactive statement para detectar cambios en searchTerm con debounce
+    $: if (typeof window !== 'undefined') {
+        // Limpiar timer anterior
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+        }
+
+        // Crear nuevo timer
+        searchDebounceTimer = setTimeout(() => {
+            // Solo hacer búsqueda si el término cambió
+            if (searchTerm !== activeSearch) {
+                performLiveSearch(searchTerm);
+            }
+        }, DEBOUNCE_DELAY);
+    }
+
+    // También reaccionar a cambios en selectedGroup
+    $: {
+        if (selectedGroup !== undefined && !loading) {
+            // Reiniciar búsqueda cuando cambia el grupo
+            page = 1;
+            hasMore = true;
+            loadPage(1, activeSearch);
         }
     }
 
@@ -125,6 +189,10 @@
     });
 
     onDestroy(() => {
+        // Limpiar debounce timer
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+        }
         try { window.removeEventListener('resize', () => {}); } catch(e) {}
         try { observer?.disconnect(); } catch(e) {}
         try { removeScroll?.(); } catch(e) {}
@@ -229,4 +297,3 @@
         </main>
     </div>
 </div>
-

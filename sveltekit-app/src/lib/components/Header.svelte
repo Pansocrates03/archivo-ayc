@@ -30,21 +30,21 @@
                     {#if prepa.length}
                         <optgroup label="Prepa Tec">
                             {#each prepa as group (group.id)}
-                                <option value={group.nombre}>{group.nombre}</option>
+                                <option value={group.id}>{group.nombre}</option>
                             {/each}
                         </optgroup>
                     {/if}
                     {#if arte.length}
                         <optgroup label="Arte y Cultura">
                             {#each arte as group (group.id)}
-                                <option value={group.nombre}>{group.nombre}</option>
+                                <option value={group.id}>{group.nombre}</option>
                             {/each}
                         </optgroup>
                     {/if}
                     {#if otros.length}
                         <optgroup label="Otros">
                             {#each otros as group (group.id)}
-                                <option value={group.nombre}>{group.nombre} — {group.presentadopor}</option>
+                                <option value={group.id}>{group.nombre} — {group.presentadopor}</option>
                             {/each}
                         </optgroup>
                     {/if}

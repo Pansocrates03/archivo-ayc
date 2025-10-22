@@ -5,17 +5,6 @@ interface PocketBaseRecord {
     collectionName: string;
 }
 
-export interface Proyecto extends PocketBaseRecord {
-    nombre: string;
-    anio: number;
-    estreno: string;
-    elenco: any;
-    sinopsis: string;
-    programa: string;
-    grupo_nombre: string;
-    galeria: string[];
-}
-
 export interface Grupo { id: string; nombre: string; presentadopor?: string }
 
 export interface Persona {
