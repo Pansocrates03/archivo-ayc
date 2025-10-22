@@ -5,7 +5,7 @@
     import { ThumbnailService } from '$lib/services/ThumbnailService';
     import { lazyThumbnail } from '$lib/actions/lazyThumbnail';
     import type { ProyectoWithThumbnail, Persona, Grupo } from '$lib/types/alltypes';
-    import { fetchPeople, fetchPlaysPage, fetchGroups, getProgramaUrl, getGalleryThumbUrl } from '$lib/services/DatabaseService';
+    import { fetchPeople, fetchPlaysPage, fetchGroups, getProgramaUrl, fetchProject, fetchProjectsPreview } from '$lib/services/DatabaseService';
 
     const thumbnailService = new ThumbnailService();
 
@@ -38,6 +38,9 @@
         if (width < 1400) return 4;
         return 5;
     }
+
+    
+
 
     function groupPlaysByYear(plays: ProyectoWithThumbnail[]): GroupedPlays {
         const grouped: GroupedPlays = {};
@@ -94,6 +97,8 @@
             await loadPage(page);
             allGroups = await fetchGroups();
             allPeople = await fetchPeople();
+
+            fetchProjectsPreview(1);
 
             // intersection observer for infinite scroll
             if (typeof window !== 'undefined') {

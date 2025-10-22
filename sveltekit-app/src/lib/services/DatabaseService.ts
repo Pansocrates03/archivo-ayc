@@ -1,14 +1,53 @@
 import PocketBase from 'pocketbase';
 const pb = new PocketBase('https://pocketbase-production-f5d2.up.railway.app');
 
-import type { Proyecto, Grupo, Persona, ProyectoWithThumbnail } from '$lib/types/alltypes';
+import type { Proyecto, Grupo, Persona, ProyectoWithThumbnail, ProjectExpanded, ProjectPreview } from '$lib/types/alltypes';
 
 // Caché en memoria para URLs de thumbnails
 const thumbnailUrlCache = new Map<string, string>();
 
+export async function fetchProject(id:string): Promise<ProjectExpanded | undefined> {
+    try {
+        const record = await pb.collection('proyectos').getOne("h1ob6kse96m3xs0", {
+            expand: 'grupo_id, direccion_general, direccion_asistente, produccion_ejecutiva'
+        });
+
+        console.log(`Obra obtenida: ${record.nombre}, director ${record.expand?.direccion_asistente.nombre}`);
+        return record as unknown as ProjectExpanded;
+    } catch(err) {
+        console.error('Error fetching play:', err);
+        return;
+    }
+}
+
+export async function fetchProjectsPreview(page: number, searchTerm = ''): Promise<ProjectPreview[]> {
+    const perPage = 10;
+    try {
+        const res = await pb
+            .collection('vista_proyecto_grupo')
+            .getList(page, perPage, {
+                filter: searchTerm ? `nombre ~ "${searchTerm}"` : undefined,
+                fields: 'id,titulo,anio,grupo_nombre,programa',
+                sort: '-anio'
+            });
+
+        console.log(`Proyectos de preview obtenidos:`, res.items);
+        return res.items.map((proyecto: any) => ({
+            ...proyecto,
+            thumbnail: undefined,
+            thumbnailLoading: false
+        })) as ProjectPreview[];
+    } catch(err) {
+        throw new Error('Error al cargar las obras de preview');
+    }
+}
+
 export async function fetchPlays(): Promise<ProyectoWithThumbnail[]> {
     try {
-        const proyectos: Proyecto[] = await pb.collection('vista_proyecto_grupo').getFullList({ sort: '-anio' });
+        const proyectos: Proyecto[] = await pb
+            .collection('vista_proyecto_grupo')
+            .getFullList({ sort: '-anio' });
+            
         return proyectos.map((proyecto) => ({
             ...proyecto,
             thumbnail: undefined,
@@ -21,7 +60,9 @@ export async function fetchPlays(): Promise<ProyectoWithThumbnail[]> {
 
 export async function fetchPlaysPage(page = 1, perPage = 15): Promise<{ items: ProyectoWithThumbnail[]; totalItems: number; page: number; perPage: number }> {
     try {
-        const res = await pb.collection('vista_proyecto_grupo').getList(page, perPage, { sort: '-anio' });
+        const res = await pb.collection('vista_proyecto_grupo')
+            .getList(page, perPage, { sort: '-anio' });
+
         const items = res.items.map((proyecto: any) => ({
             ...proyecto,
             thumbnail: undefined,
