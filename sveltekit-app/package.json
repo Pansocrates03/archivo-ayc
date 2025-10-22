@@ -29,6 +29,7 @@
 	"dependencies": {
 		"pdfjs": "^2.5.4",
 		"pdfjs-dist": "^5.4.296",
-		"pocketbase": "^0.26.2"
+		"pocketbase": "^0.26.2",
+		"rollup": "^4.52.5"
 	}
 }
