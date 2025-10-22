@@ -1,5 +1,11 @@
-export interface Proyecto {
+// Campos base de PocketBase que necesitamos para getURL
+interface PocketBaseRecord {
     id: string;
+    collectionId: string;
+    collectionName: string;
+}
+
+export interface Proyecto extends PocketBaseRecord {
     nombre: string;
     anio: number;
     estreno: string;
@@ -18,13 +24,8 @@ export interface Persona {
     matricula: string;
 }
 
-export interface ProyectoWithThumbnail extends Proyecto {
-    thumbnail?: string;
-    thumbnailLoading?: boolean
-}
 
-export interface ProjectExpanded {
-    id: string;
+export interface ProjectExpanded extends PocketBaseRecord {
     anio: number;
     estreno: string;
     nombre: string;
@@ -35,20 +36,20 @@ export interface ProjectExpanded {
     thumbnailLoading?: boolean // Variable temporal para el estado de carga del thumbnail
 
     expand: {
-        grupo: Grupo[];
+        grupo_id: Grupo;
         direccion_general: Persona[];
         direccion_asistente: Persona[];
         produccion_ejecutiva: Persona[];
-        autor: Persona[];
+        autor: Persona;
+        elenco: Persona[];
     }
 }
 
-export interface ProjectPreview {
-    id: string;
-    titulo: string;
+export interface ProjectPreview extends PocketBaseRecord {
+    nombre: string;
     anio: number;
-    grupo_nombre: string;
+    grupo_id: string;
     programa: string;
-    thumbnail: undefined,
-    thumbnailLoading: false
+    thumbnail?: string;
+    thumbnailLoading?: boolean;
 }

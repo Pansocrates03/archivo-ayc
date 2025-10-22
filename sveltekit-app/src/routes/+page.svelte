@@ -4,17 +4,16 @@
     import Header from '$lib/components/Header.svelte';
     import { ThumbnailService } from '$lib/services/ThumbnailService';
     import { lazyThumbnail } from '$lib/actions/lazyThumbnail';
-    import type { ProyectoWithThumbnail, Persona, Grupo } from '$lib/types/alltypes';
-    import { fetchPeople, fetchPlaysPage, fetchGroups, getProgramaUrl, fetchProject, fetchProjectsPreview } from '$lib/services/DatabaseService';
+    import type { Grupo, ProjectPreview } from '$lib/types/alltypes';
+    import { fetchGroups, getProgramaUrl, fetchProjectsPreview } from '$lib/services/DatabaseService';
 
     const thumbnailService = new ThumbnailService();
 
-    interface GroupedPlays { [year: number]: ProyectoWithThumbnail[] }
+    interface GroupedPlays { [year: number]: ProjectPreview[] }
 
-    let allPlays: ProyectoWithThumbnail[] = [];
+    let allPlays: ProjectPreview[] = [];
     let allGroups: Grupo[] = [];
-    let allPeople: Persona[] = [];
-    let filteredPlays: ProyectoWithThumbnail[] = [];
+    let filteredPlays: ProjectPreview[] = [];
     // pagination state
     let page = 1;
     const perPage = 15;
@@ -29,20 +28,8 @@
     let selectedGroup: string = '';
     let loading = true;
     let error = '';
-    let galleryPage = 0;
-    let galleryPageSize = 3;
 
-    function computeGalleryPageSize(width: number) {
-        if (width < 640) return 2;
-        if (width < 1024) return 3;
-        if (width < 1400) return 4;
-        return 5;
-    }
-
-    
-
-
-    function groupPlaysByYear(plays: ProyectoWithThumbnail[]): GroupedPlays {
+    function groupPlaysByYear(plays: ProjectPreview[]): GroupedPlays {
         const grouped: GroupedPlays = {};
         plays.forEach((play) => {
             if (!grouped[play.anio]) grouped[play.anio] = [];
@@ -51,16 +38,14 @@
         return grouped;
     }
 
-    function filterPlays(plays: ProyectoWithThumbnail[], search: string, group: string): ProyectoWithThumbnail[] {
+    function filterPlays(plays: ProjectPreview[], search: string, group: string): ProjectPreview[] {
         let tempPlays = plays;
         if (search.trim()) tempPlays = tempPlays.filter((p) => p.nombre.toLowerCase().includes(search.toLowerCase()));
-        if (group) tempPlays = tempPlays.filter((p) => p.grupo_nombre === group);
+        if (group) tempPlays = tempPlays.filter((p) => p.grupo_id === group);
         return tempPlays;
     }
 
-    async function handlePlayClick(play: ProyectoWithThumbnail) {
-        // Navigate to details page
-        console.log('Navigating to play:', play);
+    async function handlePlayClick(play: ProjectPreview) {
         window.location.href = `/proyecto/${play.id}`;
     }
 
@@ -70,15 +55,18 @@
 
     async function loadPage(p: number) {
         try {
-                console.log('[pagination] loadPage start', p);
             loadingMore = true;
-            const res = await fetchPlaysPage(p, perPage);
+            const res = await fetchProjectsPreview(p);
+
+            // Append new items instead of replacing
             if (p === 1) {
                 allPlays = res.items;
             } else {
                 allPlays = [...allPlays, ...res.items];
             }
-            totalItems = res.totalItems;
+
+            // Update pagination metadata
+            totalItems = res.totalItems ?? allPlays.length;
             hasMore = allPlays.length < totalItems;
         } catch (err) {
             console.error('Error cargando página de obras:', err);
@@ -96,9 +84,6 @@
             page = 1;
             await loadPage(page);
             allGroups = await fetchGroups();
-            allPeople = await fetchPeople();
-
-            fetchProjectsPreview(1);
 
             // intersection observer for infinite scroll
             if (typeof window !== 'undefined') {
@@ -127,9 +112,9 @@
                             }
                         }, 150);
                     };
-                    window.addEventListener('scroll', scrollHandler);
+                    (window as any).addEventListener('scroll', scrollHandler);
                     // ensure we remove it on destroy (assign function to top-level var)
-                    removeScroll = () => window.removeEventListener('scroll', scrollHandler);
+                    removeScroll = () => (window as any).removeEventListener('scroll', scrollHandler);
                 }
             }
         } catch (err) {
@@ -189,7 +174,9 @@
                             <span class="absolute bottom-0 left-0 h-1 w-24 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></span>
                         </h2>
                         <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
                             {#each groupedPlays[year] as play (play.id)}
+                                <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
                                 <article class="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2" on:click={() => handlePlayClick(play)} role="button" tabindex="0">
                                     <div class="relative overflow-hidden max-h-80">
                                         {#if play.thumbnail}
@@ -197,9 +184,16 @@
                                         {:else}
                                             <div
                                                 use:lazyThumbnail={{
-                                                    generate: async () => await thumbnailService.generateThumbnail(getProgramaUrl(play), 320),
-                                                    onStart: () => { play.thumbnailLoading = true; allPlays = [...allPlays]; },
-                                                    onLoaded: (dataUrl) => { play.thumbnail = dataUrl; play.thumbnailLoading = false; allPlays = [...allPlays]; },
+                                                    generate: async () => {
+                                                        const url = getProgramaUrl(play);
+                                                        return await thumbnailService.generateThumbnail(url, 320);
+                                                    },
+                                                    onStart: () => {
+                                                        console.log('[thumb] start', play.id); play.thumbnailLoading = true; allPlays = [...allPlays];
+                                                    },
+                                                    onLoaded: (dataUrl) => {
+                                                        console.log('[thumb] loaded for', play.id, 'len:', dataUrl?.length); play.thumbnail = dataUrl; play.thumbnailLoading = false; allPlays = [...allPlays];
+                                                    },
                                                     rootMargin: '300px'
                                                     }}
                                                 class="w-full h-80 bg-gray-200 flex items-center justify-center">
@@ -215,7 +209,7 @@
                                     <div class="p-5">
                                         <h3 class="mb-2 text-center text-lg font-semibold text-gray-800">{play.nombre}</h3>
                                         <div class="flex justify-center">
-                                            <span class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">{play.grupo_nombre}</span>
+                                            <span class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">{allGroups.find(g => g.id === play.grupo_id)?.nombre}</span>
                                         </div>
                                     </div>
                                 </article>

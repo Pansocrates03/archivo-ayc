@@ -1,14 +1,13 @@
 <script lang="ts">
     import type { PageData } from './$types';
-    import type { Persona, ProyectoWithThumbnail } from '$lib/types/alltypes';
+    import type { ProjectExpanded } from '$lib/types/alltypes';
     import { getGalleryThumbUrl, getGalleryUrl, getProgramaUrl } from '$lib/services/DatabaseService';
 
     export let data: PageData;
 
-    let play: ProyectoWithThumbnail | null = data.play;
+    let project: ProjectExpanded = data.project;
     import { ThumbnailService } from '$lib/services/ThumbnailService';
     const thumbnailService = new ThumbnailService();
-    const people: Persona[] = data.people ?? [];
 
     let galleryPage = 0;
     let galleryPageSize = 3;
@@ -20,23 +19,17 @@
         return 6;
     }
 
-    function getElencoNames(p: ProyectoWithThumbnail | null): string {
-        if (!p || !p.elenco || !Array.isArray(p.elenco) || !people) return 'No disponible';
-        const names = p.elenco.map((pid: string) => people.find((x) => x.id === pid)?.nombre ?? 'Desconocido');
-        const filtered = names.filter((n) => n && n.trim().length > 0);
-        return filtered.length ? filtered.join(', ') : 'No disponible';
-    }
 
     function openPrograma() {
-        if (play) window.open(getProgramaUrl(play), '_blank');
+        if (project) window.open(getProgramaUrl(project), '_blank');
     }
 
     function openGalleryImage(url: string) {
         window.open(url, '_blank');
     }
 
-    $: totalPages = play && play.galeria ? Math.max(1, Math.ceil(play.galeria.length / galleryPageSize)) : 0;
-    $: currentGallerySlice = play && play.galeria ? play.galeria.slice(galleryPage * galleryPageSize, (galleryPage + 1) * galleryPageSize) : [];
+    $: totalPages = project && project.galeria ? Math.max(1, Math.ceil(project.galeria.length / galleryPageSize)) : 0;
+    $: currentGallerySlice = project && project.galeria ? project.galeria.slice(galleryPage * galleryPageSize, (galleryPage + 1) * galleryPageSize) : [];
 
     let loadedImages = new Set<string>();
     
@@ -45,18 +38,18 @@
         loadedImages = new Set(loadedImages);
     }
 
-    $: if (play) {
+    $: if (project) {
         loadedImages = new Set();
     }
 
     // Prefetch más agresivo: cargar página siguiente inmediatamente
-    $: if (typeof window !== 'undefined' && play && play.galeria) {
-        const maxPage = Math.floor((play.galeria.length - 1) / galleryPageSize);
+    $: if (typeof window !== 'undefined' && project && project.galeria) {
+        const maxPage = Math.floor((project.galeria.length - 1) / galleryPageSize);
         const nextPage = Math.min(maxPage, galleryPage + 1);
         
         if (nextPage > galleryPage) {
             const start = nextPage * galleryPageSize;
-            const slice = play.galeria.slice(start, start + galleryPageSize);
+            const slice = project.galeria.slice(start, start + galleryPageSize);
             
             // Usar requestIdleCallback para no bloquear UI
             if ('requestIdleCallback' in window) {
@@ -64,7 +57,7 @@
                     slice.forEach(imgName => {
                         if (!loadedImages.has(imgName)) {
                             const img = new Image();
-                            img.src = getGalleryThumbUrl(play!, imgName, 150, 110, 40);
+                            img.src = getGalleryThumbUrl(project, imgName, 150, 110, 40);
                         }
                     });
                 });
@@ -87,18 +80,18 @@
 
         // Generate thumbnail client-side if needed
         (async () => {
-            if (play && !play.thumbnail) {
+            if (project && !project.thumbnail) {
                 try {
-                    play.thumbnailLoading = true;
-                    play = { ...play };
-                    const dataUrl = await thumbnailService.generateThumbnail(getProgramaUrl(play), 320);
-                    play.thumbnail = dataUrl;
+                    project.thumbnailLoading = true;
+                    project = { ...project };
+                    const dataUrl = await thumbnailService.generateThumbnail(getProgramaUrl(project), 320);
+                    project.thumbnail = dataUrl;
                 } catch (err) {
                     console.error('Error generando miniatura en detalles:', err);
                 } finally {
-                    if (play) {
-                        play.thumbnailLoading = false;
-                        play = { ...play };
+                    if (project) {
+                        project.thumbnailLoading = false;
+                        project = { ...project };
                     }
                 }
             }
@@ -108,7 +101,7 @@
     });
 </script>
 
-{#if play}
+{#if project}
 <div class="p-4 max-w-7xl mx-auto">
     <a href="/" aria-label="Volver" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors mb-4">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,22 +110,22 @@
         Volver
     </a>
     
-    <h1 class="text-3xl font-bold mb-6">{play.nombre}</h1>
+    <h1 class="text-3xl font-bold mb-6">{project.nombre}</h1>
 
     <div class="flex flex-col lg:flex-row gap-8 mb-8">
         <div class="lg:w-2/5 w-full">
             <button on:click={openPrograma} class="block w-full group">
-                {#if play.thumbnail}
+                {#if project.thumbnail}
                     <img 
-                        src={play.thumbnail} 
-                        alt={play.nombre} 
+                        src={project.thumbnail} 
+                        alt={project.nombre} 
                         class="w-full max-w-md mx-auto rounded-lg shadow-lg group-hover:shadow-2xl transition-all cursor-pointer"
                         loading="eager"
                     />
                     <p class="text-sm text-gray-500 text-center mt-3 group-hover:text-blue-600 transition-colors">
                         Clic para abrir programa completo →
                     </p>
-                {:else if play.thumbnailLoading}
+                {:else if project.thumbnailLoading}
                     <div class="w-full max-w-md h-96 mx-auto bg-gray-100 rounded-lg flex items-center justify-center">
                         <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-blue-600 border-gray-300"></div>
                     </div>
@@ -151,17 +144,17 @@
             <div class="bg-white rounded-lg shadow-md p-6 space-y-5">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Grupo</h2>
-                    <p class="text-lg text-gray-900">{play.grupo_nombre}</p>
+                    <p class="text-lg text-gray-900">{project.expand?.grupo_id.nombre}</p>
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Estreno</h2>
                     <p class="text-lg text-gray-900">
-                        {new Date(play.estreno).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        {new Date(project.estreno).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Elenco</h2>
-                    <p class="text-gray-900 leading-relaxed">{getElencoNames(play)}</p>
+                    <p class="text-gray-900 leading-relaxed">{project.expand?.elenco.map(person => person.nombre).join(', ')}</p>
                 </div>
             </div>
         </div>
@@ -170,14 +163,14 @@
     <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-2xl font-bold text-gray-900">Galería</h2>
-            {#if play.galeria && play.galeria.length > 0}
+            {#if project.galeria && project.galeria.length > 0}
                 <span class="text-sm text-gray-500">
-                    {play.galeria.length} {play.galeria.length === 1 ? 'foto' : 'fotos'}
+                    {project.galeria.length} {project.galeria.length === 1 ? 'foto' : 'fotos'}
                 </span>
             {/if}
         </div>
 
-        {#if play && play.galeria && play.galeria.length > 0}
+        {#if project && project.galeria && project.galeria.length > 0}
             <div class="flex items-center gap-4">
                 <button 
                     type="button" 
@@ -195,14 +188,14 @@
                     {#each currentGallerySlice as imgName (imgName)}
                         <button 
                             type="button" 
-                            on:click={() => openGalleryImage(getGalleryUrl(play!, imgName))} 
+                            on:click={() => openGalleryImage(getGalleryUrl(project, imgName))} 
                             class="relative aspect-[4/3] rounded-lg overflow-hidden bg-gray-200 group focus:outline-none focus:ring-2 focus:ring-blue-500"
                             aria-label="Ver imagen en tamaño completo"
                         >
                             <!-- UNA SOLA IMAGEN - Sin placeholder duplicado -->
                             <img 
-                                src={getGalleryThumbUrl(play!, imgName, 150, 110, 40)} 
-                                alt={`${play!.nombre} - foto de galería`}
+                                src={getGalleryThumbUrl(project, imgName, 150, 110, 40)} 
+                                alt={`${project!.nombre} - foto de galería`}
                                 loading="lazy"
                                 decoding="async"
                                 class="absolute inset-0 w-full h-full object-cover transition-all duration-200 group-hover:scale-110" 
@@ -231,9 +224,9 @@
 
                 <button 
                     type="button" 
-                    on:click={() => galleryPage = Math.min(Math.floor((play.galeria.length - 1) / galleryPageSize), galleryPage + 1)} 
+                    on:click={() => galleryPage = Math.min(Math.floor((project.galeria.length - 1) / galleryPageSize), galleryPage + 1)} 
                     class="p-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex-shrink-0" 
-                    disabled={play ? (galleryPage >= Math.floor((play.galeria.length - 1) / galleryPageSize)) : true}
+                    disabled={project ? (galleryPage >= Math.floor((project.galeria.length - 1) / galleryPageSize)) : true}
                     aria-label="Página siguiente"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
