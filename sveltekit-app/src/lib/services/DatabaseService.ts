@@ -80,17 +80,24 @@ export async function obtenerObrasPorPersona(personaId: string): Promise<Project
         const result = await pb.collection('proyectos').getList(1, 50, {
             filter: filterQuery,
             // Sigue siendo buena práctica solo cargar los campos necesarios para la lista.
-            fields: 'id,titulo,poster_url,anio_estreno', 
+            fields: 'id,anio,estreno,anio, grupo_id, nombre', 
             // Podrías usar expand si quisieras mostrar a los co-actores, pero no es necesario para el objetivo
             // expand: 'elenco' 
         });
 
-        console.log(`Se encontraron ${result.totalItems} obras para la persona ID: ${personaId}`);
         
         return result.items as ProjectPreview[];
     } catch (error: any) {
         console.error("Error al buscar obras por persona:", error.message);
         return [];
+    }
+}
+
+export async function fetchPersona(id: string): Promise<Persona> {
+    try {
+        return await pb.collection('personas').getOne(id);
+    } catch(err) {
+        throw new Error('Error al cargar la persona');
     }
 }
 

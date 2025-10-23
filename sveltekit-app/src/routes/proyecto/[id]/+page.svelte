@@ -181,7 +181,22 @@
 
                 <div>
                     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Elenco</h2>
-                    <p class="text-gray-900 leading-relaxed">{project.expand?.elenco.map(person => person.nombre).join(', ')}</p>
+                    <p class="text-gray-900 leading-relaxed">
+                        {#if project.expand?.elenco && project.expand.elenco.length > 0}
+                            {#each project.expand.elenco as person, i (person.id ?? person.nombre)}
+                                {#if person?.id}
+                                    <a href={`/persona/${person.id}`} class="text-inherit hover:underline hover:text-blue-600 transition-colors">{person.nombre}</a>
+                                {:else}
+                                       <span>{person.nombre}</span>
+                                {/if}
+                                {#if i < project.expand.elenco.length - 1}
+                                    <span>, </span>
+                                {/if}
+                            {/each}
+                        {:else}
+                            <span>N/A</span>
+                        {/if}
+                    </p>
                 </div>
             </div>
         </div>

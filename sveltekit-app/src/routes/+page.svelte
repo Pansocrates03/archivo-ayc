@@ -9,10 +9,9 @@
 
     // STORES
     import { projectsPreviewStore } from '$lib/stores/projectPereviewStore';
-    let allPlays: ProjectPreview[] = [];
-    projectsPreviewStore.subscribe(value => {
-        allPlays = value;
-    });
+    // Use Svelte auto-subscription
+    $: storeState = $projectsPreviewStore;
+    $: allPlays = storeState.items;
 
     const thumbnailService = new ThumbnailService();
 
@@ -22,7 +21,8 @@
     let allGroups: Grupo[] = [];
     let filteredPlays: ProjectPreview[] = [];
     // pagination state
-    let page = 1;
+    // pagination state moved to store
+    let page = 1; // kept for compatibility in template if needed
     const perPage = 15;
     let totalItems = 0;
     let hasMore = true;
@@ -68,44 +68,10 @@
     // track the current active search term used for server queries
     let activeSearch = '';
 
-    async function loadPage(p: number, search = '') {
-        try {
-            loadingMore = true;
-            
-            // use provided search, fallback to activeSearch
-            const searchQuery = search || activeSearch;
-            const res = await fetchProjectsPreview(p, searchQuery, selectedGroup || undefined);
-
-            // Si llegamos aquí, la búsqueda fue exitosa - limpiar error
-            error = '';
-
-            // Append new items instead of replacing
-            if (p === 1) {
-                projectsPreviewStore.set(res.items);
-            } else {
-                projectsPreviewStore.update(current => [...current, ...res.items]);
-            }
-
-            // Update pagination metadata
-            totalItems = res.totalItems ?? allPlays.length;
-            hasMore = allPlays.length < totalItems;
-        } catch (err) {
-            console.error('Error cargando página de obras:', err);
-            const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
-            
-            // Solo mostrar error si es la primera página o no hay datos
-            if (p === 1) {
-                error = errorMsg;
-                allPlays = [];
-                hasMore = false;
-            } else {
-                // Para páginas subsecuentes, solo log el error
-                console.warn('Error en paginación, manteniendo datos existentes');
-            }
-        } finally {
-            loadingMore = false;
-            console.log('[pagination] loadPage done', p, 'hasMore=', hasMore);
-        }
+    // delegate pagination to store
+    function loadPage(p: number, search = '') {
+        // store handles loading and errors
+        projectsPreviewStore.loadPage(p);
     }
 
     // Función para realizar búsqueda en vivo
@@ -115,11 +81,10 @@
             activeSearch = search;
             page = 1;
             hasMore = true;
-            // loadPage manejará el estado de error internamente
-            await loadPage(1, search);
+            // delegate to store
+            projectsPreviewStore.setSearch(search);
         } catch (err) {
             console.error('[live-search] Error:', err);
-            // El error ya fue manejado en loadPage
         }
     }
 
@@ -132,10 +97,10 @@
 
         // Crear nuevo timer
         searchDebounceTimer = setTimeout(() => {
-            // Solo hacer búsqueda si el término cambió
-            if (searchTerm !== activeSearch) {
-                performLiveSearch(searchTerm);
-            }
+                // Solo hacer búsqueda si el término cambió
+                if (searchTerm !== activeSearch) {
+                    performLiveSearch(searchTerm);
+                }
         }, DEBOUNCE_DELAY);
     }
 
@@ -145,7 +110,7 @@
             // Reiniciar búsqueda cuando cambia el grupo
             page = 1;
             hasMore = true;
-            loadPage(1, activeSearch);
+            projectsPreviewStore.setGroup(selectedGroup);
         }
     }
 
@@ -154,7 +119,7 @@
         try {
             error = '';
             page = 1;
-            await loadPage(page);
+            projectsPreviewStore.loadPage(1);
             allGroups = await fetchGroups();
 
             // intersection observer for infinite scroll
@@ -163,9 +128,8 @@
                     observer = new IntersectionObserver((entries) => {
                         for (const entry of entries) {
                             console.log('[pagination] observer entry', entry.isIntersecting, entry.target);
-                            if (entry.isIntersecting && hasMore && !loadingMore) {
-                                page += 1;
-                                loadPage(page);
+                            if (entry.isIntersecting && $projectsPreviewStore.hasMore && !$projectsPreviewStore.loadingMore) {
+                                projectsPreviewStore.loadNext();
                             }
                         }
                     }, { root: null, rootMargin: '400px', threshold: 0.1 });
@@ -178,9 +142,8 @@
                         scrollTimeout = window.setTimeout(() => {
                             const nearBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.offsetHeight - 800);
                             console.log('[pagination] scroll check, nearBottom=', nearBottom, 'hasMore=', hasMore, 'loadingMore=', loadingMore);
-                            if (nearBottom && hasMore && !loadingMore) {
-                                page += 1;
-                                loadPage(page);
+                                if (nearBottom && $projectsPreviewStore.hasMore && !$projectsPreviewStore.loadingMore) {
+                                    projectsPreviewStore.loadNext();
                             }
                         }, 150);
                     };
@@ -265,15 +228,12 @@
                                                         return await thumbnailService.generateThumbnail(url, 320);
                                                     },
                                                     onStart: () => {
-                                                        //console.log('[thumb] start', play.id);
-                                                        play.thumbnailLoading = true;
-                                                        allPlays = [...allPlays];
+                                                        // mark loading in store
+                                                        projectsPreviewStore.patchItem(play.id, { thumbnailLoading: true });
                                                     },
                                                     onLoaded: (dataUrl) => {
-                                                        //console.log('[thumb] loaded for', play.id, 'len:', dataUrl?.length);
-                                                        play.thumbnail = dataUrl;
-                                                        play.thumbnailLoading = false;
-                                                        allPlays = [...allPlays];
+                                                        // update item via store
+                                                        projectsPreviewStore.patchItem(play.id, { thumbnail: dataUrl, thumbnailLoading: false });
                                                     },
                                                     rootMargin: '300px'
                                                     }}
@@ -300,7 +260,7 @@
                 {/each}
                 <!-- sentinel for infinite scroll -->
                 <div bind:this={sentinel} class="h-4"></div>
-                {#if loadingMore}
+                {#if $projectsPreviewStore.loadingMore}
                     <div class="py-6 text-center">
                         <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
                         <p class="mt-2 text-sm text-gray-600">Cargando más obras...</p>
