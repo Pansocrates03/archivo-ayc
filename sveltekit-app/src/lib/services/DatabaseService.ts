@@ -9,7 +9,7 @@ const thumbnailUrlCache = new Map<string, string>();
 export async function fetchProject(id:string): Promise<ProjectExpanded> {
     try {
         const record = await pb.collection('proyectos').getOne(id, {
-            expand: 'grupo_id, direccion_general, direccion_asistente, produccion_ejecutiva, elenco, autor'
+            expand: 'grupo_id, direccion_general, direccion_asistente, direccion_coreografico, produccion_ejecutiva, elenco, autor'
         });
 
         // Normalizar relaciones expandidas que pueden faltar en PocketBase
@@ -25,6 +25,7 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
                 // Las relaciones que son listas deben convertirse a arrays vacíos si faltan
                 direccion_general: Array.isArray(expanded.direccion_general) ? expanded.direccion_general : (expanded.direccion_general ? [expanded.direccion_general] : []),
                 direccion_asistente: Array.isArray(expanded.direccion_asistente) ? expanded.direccion_asistente : (expanded.direccion_asistente ? [expanded.direccion_asistente] : []),
+                direccion_coreografico: Array.isArray(expanded.direccion_coreografico) ? expanded.direccion_coreografico : (expanded.direccion_coreografico ? [expanded.direccion_coreografico] : []),
                 produccion_ejecutiva: Array.isArray(expanded.produccion_ejecutiva) ? expanded.produccion_ejecutiva : (expanded.produccion_ejecutiva ? [expanded.produccion_ejecutiva] : []),
                 // El elenco es una lista de personas: si no viene, devolver array vacío para evitar que .map() falle en la UI
                 elenco: Array.isArray(expanded.elenco) ? expanded.elenco : (expanded.elenco ? [expanded.elenco] : []),
@@ -44,13 +45,13 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
     }
 }
 
-export async function fetchProjectsPreview(page: number, searchTerm = ''): Promise<{ items: ProjectPreview[]; totalItems: number; page: number; perPage: number }> {
+export async function fetchProjectsPreview(page: number, searchTerm = '', groupId?: string): Promise<{ items: ProjectPreview[]; totalItems: number; page: number; perPage: number }> {
     const perPage = 10;
     try {
         const res = await pb
             .collection('proyectos')
             .getList(page, perPage, {
-                filter: searchTerm ? `nombre ~ "${searchTerm}"` : undefined,
+                filter: (searchTerm ? `nombre ~ "${searchTerm}"` : undefined) && (groupId ? `grupo_id = "${groupId}"` : undefined),
                 fields: 'id,nombre,anio,grupo_id,programa,collectionId,collectionName',
                 sort: '-anio'
             });
@@ -64,6 +65,32 @@ export async function fetchProjectsPreview(page: number, searchTerm = ''): Promi
         return { items, totalItems: res.totalItems ?? items.length, page: res.page ?? page, perPage: res.perPage ?? perPage };
     } catch(err) {
         throw new Error('Error al cargar las obras de preview');
+    }
+}
+
+export async function obtenerObrasPorPersona(personaId: string): Promise<ProjectPreview[]> {
+    // Definimos los filtros. Usamos el operador '=' dentro del filtro.
+    // PocketBase interpreta 'elenco ~ "personaId"' como 'dame todas las obras donde 
+    // el campo de relación 'elenco' contenga esta ID'.
+    const filterQuery = `elenco ~ "${personaId}"`;
+    
+    try {
+        console.log("Buscando obras para la persona ID:", personaId);
+        // Obtenemos la lista de obras que cumplen el filtro
+        const result = await pb.collection('proyectos').getList(1, 50, {
+            filter: filterQuery,
+            // Sigue siendo buena práctica solo cargar los campos necesarios para la lista.
+            fields: 'id,titulo,poster_url,anio_estreno', 
+            // Podrías usar expand si quisieras mostrar a los co-actores, pero no es necesario para el objetivo
+            // expand: 'elenco' 
+        });
+
+        console.log(`Se encontraron ${result.totalItems} obras para la persona ID: ${personaId}`);
+        
+        return result.items as ProjectPreview[];
+    } catch (error: any) {
+        console.error("Error al buscar obras por persona:", error.message);
+        return [];
     }
 }
 
@@ -110,7 +137,6 @@ export function getProgramaUrl(project: ProjectExpanded | ProjectPreview): strin
         }
 
         const url = pb.files.getURL(project, project.programa);
-        console.log('getProgramaUrl generado:', { url, programa: project.programa, proyecto: project.id });
         return url;
     } catch (err) {
         console.error('Error en getProgramaUrl:', err, 'Proyecto:', project);

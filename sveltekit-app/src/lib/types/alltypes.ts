@@ -28,6 +28,7 @@ export interface ProjectExpanded extends PocketBaseRecord {
         grupo_id: Grupo;
         direccion_general: Persona[];
         direccion_asistente: Persona[];
+        direccion_coreografico: Persona[];
         produccion_ejecutiva: Persona[];
         autor: Persona;
         elenco: Persona[];

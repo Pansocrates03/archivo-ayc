@@ -153,12 +153,32 @@
                     </p>
                 </div>
                 
-                <div>
-                    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Dirección</h2>
-                    <p class="text-lg text-gray-900">
-                        {project.expand?.direccion_general[0].nombre || 'N/A'}
-                    </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Dirección</h2>
+                        <p class="text-lg text-gray-900">
+                            {project.expand?.direccion_general?.[0]?.nombre || 'N/A'}
+                        </p>
+                    </div>
+
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Asistentnte de Dir.</h2>
+                        <p class="text-lg text-gray-900">
+                            {project.expand?.direccion_asistente?.[0]?.nombre || 'N/A'}
+                        </p>
+                    </div>
+
+                    {#if project.expand?.direccion_coreografico?.length >= 1}
+                        <div>
+                            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Coreografía</h2>
+                            <p class="text-lg text-gray-900">
+                                {project.expand?.direccion_coreografico?.map(director => director.nombre).join(', ') || 'N/A'}
+                            </p>
+                        </div>
+                    {/if}
                 </div>
+
+
                 <div>
                     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Elenco</h2>
                     <p class="text-gray-900 leading-relaxed">{project.expand?.elenco.map(person => person.nombre).join(', ')}</p>

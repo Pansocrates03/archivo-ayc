@@ -5,13 +5,20 @@
     import { ThumbnailService } from '$lib/services/ThumbnailService';
     import { lazyThumbnail } from '$lib/actions/lazyThumbnail';
     import type { Grupo, ProjectPreview } from '$lib/types/alltypes';
-    import { fetchGroups, getProgramaUrl, fetchProjectsPreview } from '$lib/services/DatabaseService';
+    import { fetchGroups, getProgramaUrl, fetchProjectsPreview, obtenerObrasPorPersona } from '$lib/services/DatabaseService';
+
+    // STORES
+    import { projectsPreviewStore } from '$lib/stores/projectPereviewStore';
+    let allPlays: ProjectPreview[] = [];
+    projectsPreviewStore.subscribe(value => {
+        allPlays = value;
+    });
 
     const thumbnailService = new ThumbnailService();
 
     interface GroupedPlays { [year: number]: ProjectPreview[] }
 
-    let allPlays: ProjectPreview[] = [];
+    
     let allGroups: Grupo[] = [];
     let filteredPlays: ProjectPreview[] = [];
     // pagination state
@@ -50,6 +57,7 @@
     }
 
     async function handlePlayClick(play: ProjectPreview) {
+        obtenerObrasPorPersona('42lczslha38mu7q');
         window.location.href = `/proyecto/${play.id}`;
     }
 
@@ -66,16 +74,16 @@
             
             // use provided search, fallback to activeSearch
             const searchQuery = search || activeSearch;
-            const res = await fetchProjectsPreview(p, searchQuery);
+            const res = await fetchProjectsPreview(p, searchQuery, selectedGroup || undefined);
 
             // Si llegamos aquí, la búsqueda fue exitosa - limpiar error
             error = '';
 
             // Append new items instead of replacing
             if (p === 1) {
-                allPlays = res.items;
+                projectsPreviewStore.set(res.items);
             } else {
-                allPlays = [...allPlays, ...res.items];
+                projectsPreviewStore.update(current => [...current, ...res.items]);
             }
 
             // Update pagination metadata
@@ -257,10 +265,15 @@
                                                         return await thumbnailService.generateThumbnail(url, 320);
                                                     },
                                                     onStart: () => {
-                                                        console.log('[thumb] start', play.id); play.thumbnailLoading = true; allPlays = [...allPlays];
+                                                        //console.log('[thumb] start', play.id);
+                                                        play.thumbnailLoading = true;
+                                                        allPlays = [...allPlays];
                                                     },
                                                     onLoaded: (dataUrl) => {
-                                                        console.log('[thumb] loaded for', play.id, 'len:', dataUrl?.length); play.thumbnail = dataUrl; play.thumbnailLoading = false; allPlays = [...allPlays];
+                                                        //console.log('[thumb] loaded for', play.id, 'len:', dataUrl?.length);
+                                                        play.thumbnail = dataUrl;
+                                                        play.thumbnailLoading = false;
+                                                        allPlays = [...allPlays];
                                                     },
                                                     rootMargin: '300px'
                                                     }}
