@@ -152,6 +152,13 @@
                         {new Date(project.estreno).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
+                
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Dirección</h2>
+                    <p class="text-lg text-gray-900">
+                        {project.expand?.direccion_general[0].nombre || 'N/A'}
+                    </p>
+                </div>
                 <div>
                     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Elenco</h2>
                     <p class="text-gray-900 leading-relaxed">{project.expand?.elenco.map(person => person.nombre).join(', ')}</p>
