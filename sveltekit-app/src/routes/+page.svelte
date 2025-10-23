@@ -5,40 +5,36 @@
     import { ThumbnailService } from '$lib/services/ThumbnailService';
     import { lazyThumbnail } from '$lib/actions/lazyThumbnail';
     import type { Grupo, ProjectPreview } from '$lib/types/alltypes';
-    import { fetchGroups, getProgramaUrl, fetchProjectsPreview, obtenerObrasPorPersona } from '$lib/services/DatabaseService';
+    import { fetchGroups, getProgramaUrl, obtenerObrasPorPersona } from '$lib/services/DatabaseService';
 
     // STORES
     import { projectsPreviewStore } from '$lib/stores/projectPereviewStore';
-    // Use Svelte auto-subscription
-    $: storeState = $projectsPreviewStore;
-    $: allPlays = storeState.items;
-
+    
     const thumbnailService = new ThumbnailService();
 
     interface GroupedPlays { [year: number]: ProjectPreview[] }
 
-    
     let allGroups: Grupo[] = [];
     let filteredPlays: ProjectPreview[] = [];
-    // pagination state
-    // pagination state moved to store
-    let page = 1; // kept for compatibility in template if needed
-    const perPage = 15;
-    let totalItems = 0;
-    let hasMore = true;
-    let loadingMore = false;
+    
     let sentinel: HTMLElement | null = null;
     let observer: IntersectionObserver | null = null;
     let removeScroll: (() => void) | null = null;
     let _prevSentinel: HTMLElement | null = null;
+    
+    // Local UI state for inputs (estos son los valores del input del usuario)
     let searchTerm = '';
     let selectedGroup: string = '';
     let loading = true;
-    let error = '';
     
     // Debounce timer
     let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const DEBOUNCE_DELAY = 500; // 500ms delay
+    const DEBOUNCE_DELAY = 500;
+
+    // Subscribe to store state
+    $: storeState = $projectsPreviewStore;
+    $: allPlays = storeState.items;
+    $: error = storeState.error || '';
 
     function groupPlaysByYear(plays: ProjectPreview[]): GroupedPlays {
         const grouped: GroupedPlays = {};
@@ -49,7 +45,7 @@
         return grouped;
     }
 
-    function filterPlays(plays: ProjectPreview[], search: string, group: string): ProjectPreview[] {
+    function filterPlays(plays: ProjectPreview[], group: string): ProjectPreview[] {
         let tempPlays = plays;
         // Solo filtrar por grupo localmente, la búsqueda se hace en el servidor
         if (group) tempPlays = tempPlays.filter((p) => p.grupo_id === group);
@@ -61,123 +57,128 @@
         window.location.href = `/proyecto/${play.id}`;
     }
 
-    $: filteredPlays = filterPlays(allPlays, searchTerm, selectedGroup);
+    // Solo filtrar por grupo localmente
+    $: filteredPlays = filterPlays(allPlays, selectedGroup);
     $: groupedPlays = groupPlaysByYear(filteredPlays);
     $: sortedYears = Object.keys(groupedPlays).map(Number).sort((a, b) => b - a);
 
-    // track the current active search term used for server queries
-    let activeSearch = '';
-
-    // delegate pagination to store
-    function loadPage(p: number, search = '') {
-        // store handles loading and errors
-        projectsPreviewStore.loadPage(p);
-    }
-
-    // Función para realizar búsqueda en vivo
-    async function performLiveSearch(search: string) {
-        try {
-            console.log('[live-search] Buscando:', search);
-            activeSearch = search;
-            page = 1;
-            hasMore = true;
-            // delegate to store
-            projectsPreviewStore.setSearch(search);
-        } catch (err) {
-            console.error('[live-search] Error:', err);
-        }
-    }
-
-    // Reactive statement para detectar cambios en searchTerm con debounce
-    $: if (typeof window !== 'undefined') {
-        // Limpiar timer anterior
+    // Watch searchTerm with debounce - solo reacciona a cambios en searchTerm
+    $: if (typeof window !== 'undefined' && searchTerm !== undefined) {
         if (searchDebounceTimer) {
             clearTimeout(searchDebounceTimer);
         }
 
-        // Crear nuevo timer
         searchDebounceTimer = setTimeout(() => {
-                // Solo hacer búsqueda si el término cambió
-                if (searchTerm !== activeSearch) {
-                    performLiveSearch(searchTerm);
-                }
+            // Solo actualizar si el valor cambió respecto al store
+            const currentStoreSearch = $projectsPreviewStore.search;
+            if (searchTerm !== currentStoreSearch) {
+                console.log('[live-search] Actualizando búsqueda:', searchTerm);
+                projectsPreviewStore.setSearch(searchTerm);
+            }
         }, DEBOUNCE_DELAY);
     }
 
-    // También reaccionar a cambios en selectedGroup
-    $: {
-        if (selectedGroup !== undefined && !loading) {
-            // Reiniciar búsqueda cuando cambia el grupo
-            page = 1;
-            hasMore = true;
-            projectsPreviewStore.setGroup(selectedGroup);
+    // Watch selectedGroup changes - usar función separada para evitar loops
+    function handleGroupChange(group: string) {
+        const currentStoreGroup = $projectsPreviewStore.group || '';
+        if (group !== currentStoreGroup) {
+            console.log('[group-filter] Actualizando grupo:', group);
+            projectsPreviewStore.setGroup(group || undefined);
         }
+    }
+    
+    // Solo reaccionar a cambios en selectedGroup, no en todo el storeState
+    $: if (typeof window !== 'undefined' && !loading && selectedGroup !== undefined) {
+        handleGroupChange(selectedGroup);
     }
 
     onMount(async () => {
         loading = true;
         try {
-            error = '';
-            page = 1;
-            projectsPreviewStore.loadPage(1);
+            // Cargar grupos primero
             allGroups = await fetchGroups();
+            
+            // Inicializar búsqueda desde el store si existe
+            searchTerm = $projectsPreviewStore.search;
+            selectedGroup = $projectsPreviewStore.group || '';
+            
+            // Cargar primera página
+            projectsPreviewStore.loadPage(1);
 
-            // intersection observer for infinite scroll
+            // Setup intersection observer for infinite scroll
             if (typeof window !== 'undefined') {
                 if ('IntersectionObserver' in window) {
                     observer = new IntersectionObserver((entries) => {
                         for (const entry of entries) {
-                            console.log('[pagination] observer entry', entry.isIntersecting, entry.target);
-                            if (entry.isIntersecting && $projectsPreviewStore.hasMore && !$projectsPreviewStore.loadingMore) {
+                            const state = $projectsPreviewStore;
+                            console.log('[observer] Entry:', {
+                                isIntersecting: entry.isIntersecting,
+                                hasMore: state.hasMore,
+                                loadingMore: state.loadingMore,
+                                page: state.page,
+                                itemsCount: state.items.length
+                            });
+                            
+                            if (entry.isIntersecting && state.hasMore && !state.loadingMore) {
+                                console.log('[observer] ✅ Loading next page...');
                                 projectsPreviewStore.loadNext();
                             }
                         }
                     }, { root: null, rootMargin: '400px', threshold: 0.1 });
+                    
                     if (sentinel) observer.observe(sentinel);
                 } else {
-                    // fallback: debounced scroll listener
+                    // Fallback: debounced scroll listener
                     let scrollTimeout: number | null = null;
                     const scrollHandler = () => {
                         if (scrollTimeout) window.clearTimeout(scrollTimeout);
                         scrollTimeout = window.setTimeout(() => {
-                            const nearBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.offsetHeight - 800);
-                            console.log('[pagination] scroll check, nearBottom=', nearBottom, 'hasMore=', hasMore, 'loadingMore=', loadingMore);
-                                if (nearBottom && $projectsPreviewStore.hasMore && !$projectsPreviewStore.loadingMore) {
-                                    projectsPreviewStore.loadNext();
+                            const state = $projectsPreviewStore;
+                            const nearBottom = (window.innerHeight + window.scrollY) >= 
+                                (document.documentElement.offsetHeight - 800);
+                            
+                            console.log('[scroll] Check:', {
+                                nearBottom,
+                                hasMore: state.hasMore,
+                                loadingMore: state.loadingMore
+                            });
+                            
+                            if (nearBottom && state.hasMore && !state.loadingMore) {
+                                console.log('[scroll] ✅ Loading next page...');
+                                projectsPreviewStore.loadNext();
                             }
                         }, 150);
                     };
-                    (window as any).addEventListener('scroll', scrollHandler);
-                    // ensure we remove it on destroy (assign function to top-level var)
-                    removeScroll = () => (window as any).removeEventListener('scroll', scrollHandler);
+                    window.addEventListener('scroll', scrollHandler);
+                    removeScroll = () => window.removeEventListener('scroll', scrollHandler);
                 }
             }
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Error desconocido';
+            console.error('Error en onMount:', err);
         } finally {
             loading = false;
         }
     });
 
     onDestroy(() => {
-        // Limpiar debounce timer
         if (searchDebounceTimer) {
             clearTimeout(searchDebounceTimer);
         }
-        try { window.removeEventListener('resize', () => {}); } catch(e) {}
         try { observer?.disconnect(); } catch(e) {}
         try { removeScroll?.(); } catch(e) {}
     });
 
-    // ensure observer is attached to sentinel even if sentinel is set after onMount
+    // Ensure observer is attached to sentinel
     $: if (observer) {
-        // detach previous
         if (_prevSentinel && _prevSentinel !== sentinel) {
             try { observer.unobserve(_prevSentinel); } catch(e) {}
             _prevSentinel = null;
         }
         if (sentinel && _prevSentinel !== sentinel) {
-            try { observer.observe(sentinel); _prevSentinel = sentinel; } catch(e) {}
+            try { 
+                observer.observe(sentinel); 
+                _prevSentinel = sentinel; 
+            } catch(e) {}
         }
     }
 </script>
@@ -199,11 +200,19 @@
             {:else if error}
                 <div class="rounded-xl bg-red-50 p-8 text-center">
                     <p class="text-xl text-red-600">{error}</p>
-                    <button on:click={() => window.location.reload()} class="mt-4 rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700">Reintentar</button>
+                    <button 
+                        on:click={() => window.location.reload()} 
+                        class="mt-4 rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700">
+                        Reintentar
+                    </button>
                 </div>
             {:else if filteredPlays.length === 0}
                 <div class="rounded-xl bg-gray-50 p-8 text-center">
-                    <p class="text-xl text-gray-600">{searchTerm || selectedGroup ? 'No se encontraron obras que coincidan con tu búsqueda o filtro de grupo' : 'No hay obras disponibles'}</p>
+                    <p class="text-xl text-gray-600">
+                        {searchTerm || selectedGroup 
+                            ? 'No se encontraron obras que coincidan con tu búsqueda o filtro de grupo' 
+                            : 'No hay obras disponibles'}
+                    </p>
                 </div>
             {:else}
                 {#each sortedYears as year}
@@ -213,13 +222,20 @@
                             <span class="absolute bottom-0 left-0 h-1 w-24 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></span>
                         </h2>
                         <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                            <!-- svelte-ignore a11y_click_events_have_key_events -->
                             {#each groupedPlays[year] as play (play.id)}
-                                <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-                                <article class="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2" on:click={() => handlePlayClick(play)} role="button" tabindex="0">
+                                <article 
+                                    class="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2" 
+                                    on:click={() => handlePlayClick(play)} 
+                                    on:keydown={(e) => e.key === 'Enter' && handlePlayClick(play)}
+                                    role="button" 
+                                    tabindex="0">
                                     <div class="relative overflow-hidden max-h-80">
                                         {#if play.thumbnail}
-                                            <img src={play.thumbnail} alt={play.nombre} class="w-full h-80 object-cover transition-transform duration-300 group-hover:scale-105" />
+                                            <img 
+                                                src={play.thumbnail} 
+                                                alt={play.nombre} 
+                                                class="w-full h-80 object-cover transition-transform duration-300 group-hover:scale-105" 
+                                            />
                                         {:else}
                                             <div
                                                 use:lazyThumbnail={{
@@ -228,15 +244,16 @@
                                                         return await thumbnailService.generateThumbnail(url, 320);
                                                     },
                                                     onStart: () => {
-                                                        // mark loading in store
                                                         projectsPreviewStore.patchItem(play.id, { thumbnailLoading: true });
                                                     },
                                                     onLoaded: (dataUrl) => {
-                                                        // update item via store
-                                                        projectsPreviewStore.patchItem(play.id, { thumbnail: dataUrl, thumbnailLoading: false });
+                                                        projectsPreviewStore.patchItem(play.id, { 
+                                                            thumbnail: dataUrl, 
+                                                            thumbnailLoading: false 
+                                                        });
                                                     },
                                                     rootMargin: '300px'
-                                                    }}
+                                                }}
                                                 class="w-full h-80 bg-gray-200 flex items-center justify-center">
                                                 {#if play.thumbnailLoading}
                                                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -250,7 +267,9 @@
                                     <div class="p-5">
                                         <h3 class="mb-2 text-center text-lg font-semibold text-gray-800">{play.nombre}</h3>
                                         <div class="flex justify-center">
-                                            <span class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">{allGroups.find(g => g.id === play.grupo_id)?.nombre}</span>
+                                            <span class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
+                                                {allGroups.find(g => g.id === play.grupo_id)?.nombre || 'Sin grupo'}
+                                            </span>
                                         </div>
                                     </div>
                                 </article>
@@ -258,9 +277,11 @@
                         </div>
                     </section>
                 {/each}
-                <!-- sentinel for infinite scroll -->
+                
+                <!-- Sentinel for infinite scroll -->
                 <div bind:this={sentinel} class="h-4"></div>
-                {#if $projectsPreviewStore.loadingMore}
+                
+                {#if storeState.loadingMore}
                     <div class="py-6 text-center">
                         <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
                         <p class="mt-2 text-sm text-gray-600">Cargando más obras...</p>

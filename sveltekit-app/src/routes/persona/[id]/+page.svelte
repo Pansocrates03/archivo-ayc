@@ -14,11 +14,12 @@
 
     interface GroupedProjects { [year: number]: ProjectPreview[] }
 
-    function groupProjectsByYear(projects: ProjectPreview[]): GroupedProjects {
-        const grouped: GroupedProjects = {};
+
+    function groupProjectByGroup(projects: ProjectPreview[]): { [groupId: string]: ProjectPreview[] } {
+        const grouped: { [groupId: string]: ProjectPreview[] } = {};
         projects.forEach((project) => {
-            if (!grouped[project.anio]) grouped[project.anio] = [];
-            grouped[project.anio].push(project);
+            if (!grouped[project.grupo_id]) grouped[project.grupo_id] = [];
+            grouped[project.grupo_id].push(project);
         });
         return grouped;
     }
@@ -27,8 +28,8 @@
         window.location.href = `/proyecto/${project.id}`;
     }
 
-    $: groupedProjects = groupProjectsByYear(projects || []);
-    $: sortedYears = Object.keys(groupedProjects).map(Number).sort((a, b) => b - a);
+    $: groupedProjects = groupProjectByGroup(projects || []);
+    $: sortedGroups = Object.keys(groupedProjects).sort();
 
     onMount(async () => {
         allGroups = await fetchGroups();
@@ -57,7 +58,7 @@
             <div class="mb-8 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 p-8 text-white shadow-lg">
                 <h1 class="mb-4 text-4xl font-bold md:text-5xl">{persona.nombre}</h1>
                 {#if persona.biografia}
-                    <p class="text-lg leading-relaxed opacity-95">{persona.biografia || "Esteban es una persona increíble que "}</p>
+                    <p class="text-lg leading-relaxed opacity-95">{persona.biografia}</p>
                 {:else}
                     <p class="text-lg italic opacity-75">Actor en el Tecnológico de Monterrey</p>
                 {/if}
@@ -82,15 +83,15 @@
                     <p class="text-xl text-gray-600">No hay proyectos asociados a esta persona.</p>
                 </div>
             {:else}
-                {#each sortedYears as year}
+                {#each sortedGroups as group}
                     <section class="mb-12 animate-fade-in">
                         <h2 class="relative mb-6 text-3xl font-bold text-gray-700 md:text-4xl">
-                            {year}
+                            {groupedProjects[group] && groupedProjects[group].length > 0 ? allGroups.find(g => g.id === group)?.nombre : 'Sin grupo'    }
                             <span class="absolute bottom-0 left-0 h-1 w-24 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></span>
                         </h2>
                         <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                            {#each groupedProjects[year] as project (project.id)}
-                                <article 
+                            {#each groupedProjects[group] as project (project.id)}
+                                <article
                                     class="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2" 
                                     on:click={() => handleProjectClick(project)}
                                     on:keydown={(e) => e.key === 'Enter' && handleProjectClick(project)}

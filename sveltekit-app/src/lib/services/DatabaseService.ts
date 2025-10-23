@@ -45,25 +45,54 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
     }
 }
 
-export async function fetchProjectsPreview(page: number, searchTerm = '', groupId?: string): Promise<{ items: ProjectPreview[]; totalItems: number; page: number; perPage: number }> {
+export async function fetchProjectsPreview(
+    page: number, 
+    searchTerm = '', 
+    groupId?: string
+): Promise<{ items: ProjectPreview[]; totalItems: number; page: number; perPage: number }> {
     const perPage = 10;
+    
     try {
+        // Construir filtros correctamente
+        const filters: string[] = [];
+        
+        if (searchTerm && searchTerm.trim() !== '') {
+            filters.push(`nombre ~ "${searchTerm.trim()}"`);
+        }
+        
+        if (groupId && groupId.trim() !== '') {
+            filters.push(`grupo_id = "${groupId}"`);
+        }
+        
+        // Combinar con && solo si hay filtros
+        const filterString = filters.length > 0 ? filters.join(' && ') : undefined;
+        
+        console.log('[fetchProjectsPreview] Filter:', filterString);
+        
         const res = await pb
             .collection('proyectos')
             .getList(page, perPage, {
-                filter: (searchTerm ? `nombre ~ "${searchTerm}"` : undefined) && (groupId ? `grupo_id = "${groupId}"` : undefined),
-                fields: 'id,nombre,anio,grupo_id,programa,collectionId,collectionName',
-                sort: '-anio'
+                filter: filterString,
+                fields: 'id,nombre,anio,estreno,grupo_id,programa,collectionId,collectionName',
+                sort: '-estreno,-anio'
             });
 
-        console.log(`Proyectos de preview obtenidos:`, res.items);
+        console.log(`Proyectos de preview obtenidos:`, res.items.length, 'de', res.totalItems);
+        
         const items = res.items.map((proyecto: any) => ({
             ...proyecto,
             thumbnail: undefined,
             thumbnailLoading: false
         })) as ProjectPreview[];
-        return { items, totalItems: res.totalItems ?? items.length, page: res.page ?? page, perPage: res.perPage ?? perPage };
+        
+        return { 
+            items, 
+            totalItems: res.totalItems ?? items.length, 
+            page: res.page ?? page, 
+            perPage: res.perPage ?? perPage 
+        };
     } catch(err) {
+        console.error('[fetchProjectsPreview] Error:', err);
         throw new Error('Error al cargar las obras de preview');
     }
 }
@@ -80,7 +109,7 @@ export async function obtenerObrasPorPersona(personaId: string): Promise<Project
         const result = await pb.collection('proyectos').getList(1, 50, {
             filter: filterQuery,
             // Sigue siendo buena práctica solo cargar los campos necesarios para la lista.
-            fields: 'id,anio,estreno,anio, grupo_id, nombre', 
+            fields: 'id,nombre,anio,grupo_id,programa,collectionId,collectionName',
             // Podrías usar expand si quisieras mostrar a los co-actores, pero no es necesario para el objetivo
             // expand: 'elenco' 
         });

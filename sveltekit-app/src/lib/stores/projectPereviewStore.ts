@@ -15,7 +15,7 @@ type State = {
 	group?: string;
 }
 
-function createProjectsPreviewStore(perPageDefault = 15) {
+function createProjectsPreviewStore(perPageDefault = 10) {
 	const initial: State = {
 		items: [],
 		page: 0,
@@ -42,18 +42,39 @@ function createProjectsPreviewStore(perPageDefault = 15) {
 
 	async function loadPage(page = 1) {
 		const requestId = ++lastRequestId;
-		update(s => ({ ...s, error: null, loading: page === 1, loadingMore: page > 1 }));
+		
+		update(s => ({ 
+			...s, 
+			error: null, 
+			loading: page === 1, 
+			loadingMore: page > 1 
+		}));
 
 		try {
 			const snap = getSnapshot();
-			const res = await fetchProjectsPreview(page, snap.search, snap.group || undefined);
+			console.log('[store] Loading page', page, 'search:', snap.search, 'group:', snap.group);
+			
+			const res = await fetchProjectsPreview(page, snap.search, snap.group);
 
-			if (requestId !== lastRequestId) return; // ignore outdated responses
+			// Ignore outdated responses
+			if (requestId !== lastRequestId) {
+				console.log('[store] Ignoring outdated response for page', page);
+				return;
+			}
 
 			update(s => {
 				const items = page === 1 ? res.items : [...s.items, ...res.items];
 				const totalItems = res.totalItems ?? items.length;
 				const hasMore = items.length < totalItems;
+				
+				console.log('[store] Page loaded:', {
+					page,
+					itemsCount: items.length,
+					totalItems,
+					hasMore,
+					newItems: res.items.length
+				});
+				
 				return {
 					...s,
 					items,
@@ -68,33 +89,58 @@ function createProjectsPreviewStore(perPageDefault = 15) {
 			});
 		} catch (err: any) {
 			if (requestId !== lastRequestId) return;
-			update(s => ({ ...s, loading: false, loadingMore: false, error: err?.message ?? 'Error desconocido' }));
+			
+			console.error('[store] Error loading page:', err);
+			update(s => ({ 
+				...s, 
+				loading: false, 
+				loadingMore: false, 
+				error: err?.message ?? 'Error desconocido' 
+			}));
 		}
 	}
 
 	function loadNext() {
 		const s = getSnapshot();
-		if (!s.hasMore || s.loadingMore) return;
-		loadPage(s.page + 1 || 1);
+		console.log('[store] loadNext called:', {
+			hasMore: s.hasMore,
+			loadingMore: s.loadingMore,
+			currentPage: s.page,
+			itemsCount: s.items.length,
+			totalItems: s.totalItems
+		});
+		
+		if (!s.hasMore || s.loadingMore) {
+			console.log('[store] Skipping loadNext - hasMore:', s.hasMore, 'loadingMore:', s.loadingMore);
+			return;
+		}
+		
+		const nextPage = s.page + 1;
+		console.log('[store] Loading next page:', nextPage);
+		loadPage(nextPage);
 	}
 
 	function reset() {
+		console.log('[store] Resetting store');
 		lastRequestId++;
 		set({ ...initial, perPage: initial.perPage });
 	}
 
 	function setSearch(search: string) {
-		update(s => ({ ...s, search }));
+		console.log('[store] Setting search:', search);
+		update(s => ({ ...s, search, page: 0, items: [], hasMore: true }));
 		loadPage(1);
 	}
 
 	function setGroup(group?: string) {
-		update(s => ({ ...s, group }));
+		console.log('[store] Setting group:', group);
+		update(s => ({ ...s, group, page: 0, items: [], hasMore: true }));
 		loadPage(1);
 	}
 
 	function refresh() {
 		const s = getSnapshot();
+		console.log('[store] Refreshing page:', s.page || 1);
 		loadPage(s.page || 1);
 	}
 
@@ -114,9 +160,8 @@ function createProjectsPreviewStore(perPageDefault = 15) {
 		setGroup,
 		refresh,
 		patchItem,
-		// for testing/debugging
 		_getSnapshot: getSnapshot
 	} as const;
 }
 
-export const projectsPreviewStore = createProjectsPreviewStore(15);
+export const projectsPreviewStore = createProjectsPreviewStore(10);// DatabaseService.ts - Versión Corregida
