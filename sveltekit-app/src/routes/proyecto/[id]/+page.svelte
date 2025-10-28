@@ -6,6 +6,7 @@
     export let data: PageData;
 
     let project: ProjectExpanded = data.project;
+    console
     import { ThumbnailService } from '$lib/services/ThumbnailService';
     const thumbnailService = new ThumbnailService();
 
@@ -66,6 +67,7 @@
     }
 
     import { onMount } from 'svelte';
+    import PersonaList from '$lib/components/PersonaList.svelte';
     onMount(() => {
         galleryPageSize = computeGalleryPageSize(window.innerWidth);
         
@@ -156,48 +158,56 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Dirección</h2>
-                        <p class="text-lg text-gray-900">
-                            {project.expand?.direccion_general?.[0]?.nombre || 'N/A'}
-                        </p>
+                        <PersonaList personas={project.expand?.direccion_general || []} tipo="big" />
                     </div>
 
-                    <div>
-                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Asistentnte de Dir.</h2>
-                        <p class="text-lg text-gray-900">
-                            {project.expand?.direccion_asistente?.[0]?.nombre || 'N/A'}
-                        </p>
-                    </div>
+                    {#if project.expand?.direccion_asistente?.length >= 1}
+                        <div>
+                            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Asistentnte de Dir.</h2>
+                            <PersonaList personas={project.expand?.direccion_asistente || []} tipo="big" />
+                        </div>
+                    {/if}
 
                     {#if project.expand?.direccion_coreografico?.length >= 1}
                         <div>
                             <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Coreografía</h2>
-                            <p class="text-lg text-gray-900">
-                                {project.expand?.direccion_coreografico?.map(director => director.nombre).join(', ') || 'N/A'}
-                            </p>
+                            <PersonaList personas={project.expand?.direccion_coreografico || []} tipo="big" />
                         </div>
                     {/if}
                 </div>
 
 
-                <div>
-                    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Elenco</h2>
-                    <p class="text-gray-900 leading-relaxed">
-                        {#if project.expand?.elenco && project.expand.elenco.length > 0}
-                            {#each project.expand.elenco as person, i (person.id ?? person.nombre)}
-                                {#if person?.id}
-                                    <a href={`/persona/${person.id}`} class="text-inherit hover:underline hover:text-blue-600 transition-colors">{person.nombre}</a>
-                                {:else}
-                                       <span>{person.nombre}</span>
-                                {/if}
-                                {#if i < project.expand.elenco.length - 1}
-                                    <span>, </span>
-                                {/if}
-                            {/each}
-                        {:else}
-                            <span>N/A</span>
-                        {/if}
-                    </p>
-                </div>
+                {#if project.expand?.elenco && project.expand.elenco.length > 0}
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Actores</h2>
+                        <PersonaList personas={project.expand.elenco} />
+                    </div>
+                {/if}
+
+                {#if project.expand?.bailarines && project.expand.bailarines.length > 0}
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Bailarines</h2>
+                        <p class="text-gray-900 leading-relaxed">
+                            <PersonaList personas={project.expand.bailarines} />
+                        </p>
+                    </div>
+                {/if}
+
+                {#if project.expand?.cantantes && project.expand.cantantes.length > 0}
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Cantantes</h2>
+                        <p class="text-gray-900 leading-relaxed">
+                            <PersonaList personas={project.expand.cantantes} />
+                        </p>
+                    </div>
+                {/if}
+
+                {#if project.expand?.musicos && project.expand.musicos.length > 0}
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Músicos</h2>
+                        <PersonaList personas={project.expand.musicos} />
+                    </div>
+                {/if}
             </div>
         </div>
     </div>

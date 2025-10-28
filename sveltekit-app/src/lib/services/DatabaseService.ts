@@ -9,7 +9,7 @@ const thumbnailUrlCache = new Map<string, string>();
 export async function fetchProject(id:string): Promise<ProjectExpanded> {
     try {
         const record = await pb.collection('proyectos').getOne(id, {
-            expand: 'grupo_id, direccion_general, direccion_asistente, direccion_coreografico, produccion_ejecutiva, elenco, autor'
+            expand: 'grupo_id, direccion_general, direccion_asistente, direccion_coreografico, produccion_ejecutiva, elenco, bailarines, musicos, cantantes, autor'
         });
 
         // Normalizar relaciones expandidas que pueden faltar en PocketBase
@@ -29,6 +29,9 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
                 produccion_ejecutiva: Array.isArray(expanded.produccion_ejecutiva) ? expanded.produccion_ejecutiva : (expanded.produccion_ejecutiva ? [expanded.produccion_ejecutiva] : []),
                 // El elenco es una lista de personas: si no viene, devolver array vacío para evitar que .map() falle en la UI
                 elenco: Array.isArray(expanded.elenco) ? expanded.elenco : (expanded.elenco ? [expanded.elenco] : []),
+                bailarines: Array.isArray(expanded.bailarines) ? expanded.bailarines : (expanded.bailarines ? [expanded.bailarines] : []),
+                musicos: Array.isArray(expanded.musicos) ? expanded.musicos : (expanded.musicos ? [expanded.musicos] : []),
+                cantantes: Array.isArray(expanded.cantantes) ? expanded.cantantes : (expanded.cantantes ? [expanded.cantantes] : []),
                 autor: expanded.autor ?? undefined
             }
         } as unknown as ProjectExpanded;
@@ -37,6 +40,7 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
         // const directorName = (safeRecord.expand?.direccion_asistente ? (safeRecord.expand.direccion_asistente as any)?.nombre : undefined) ?? 'undefined';
         // console.log(`Obra obtenida: ${safeRecord.nombre ?? '<sin nombre>'}, director ${directorName}`);
 
+        console.log('Musicos cargados:', safeRecord.expand?.musicos?.length ?? 0);
         return safeRecord;
     } catch(err: any) {
         // Mantener el mensaje original del error para debugging
@@ -101,7 +105,13 @@ export async function obtenerObrasPorPersona(personaId: string): Promise<Project
     // Definimos los filtros. Usamos el operador '=' dentro del filtro.
     // PocketBase interpreta 'elenco ~ "personaId"' como 'dame todas las obras donde 
     // el campo de relación 'elenco' contenga esta ID'.
-    const filterQuery = `elenco ~ "${personaId}"`;
+    const pid = String(personaId).replace(/"/g, '\\"');
+    const terms = [
+        `elenco ~ "${pid}"`,
+        `bailarines ~ "${pid}"`,
+        `musicos ~ "${pid}"`
+    ];
+    const filterQuery = terms.join(' || ');
     
     try {
         console.log("Buscando obras para la persona ID:", personaId);
