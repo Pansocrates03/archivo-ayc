@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-const pb = new PocketBase('https://pocketbase-production-f5d2.up.railway.app');
+export const pb = new PocketBase('https://pocketbase-production-f5d2.up.railway.app');
 
 import type { Grupo, Persona, ProjectExpanded, ProjectPreview } from '$lib/types/alltypes';
 
@@ -148,6 +148,33 @@ export async function fetchGroups(): Promise<Grupo[]> {
     } catch(err) {
         console.error('Error al cargar los grupos:', err);
         return [];
+    }
+}
+
+export async function createProject(data: Record<string, any>): Promise<any> {
+    try {
+        // If caller passed a FormData (for file uploads) use it directly
+        if (data instanceof FormData) {
+            return await pb.collection('proyectos').create(data);
+        }
+
+        // Otherwise create with plain object
+        return await pb.collection('proyectos').create(data);
+    } catch (err: any) {
+        console.error('Error creating project:', err);
+        throw err;
+    }
+}
+
+export async function updateProject(id: string, data: Record<string, any>): Promise<any> {
+    try {
+        if (data instanceof FormData) {
+            return await pb.collection('proyectos').update(id, data);
+        }
+        return await pb.collection('proyectos').update(id, data);
+    } catch (err: any) {
+        console.error('Error updating project:', err);
+        throw err;
     }
 }
 
