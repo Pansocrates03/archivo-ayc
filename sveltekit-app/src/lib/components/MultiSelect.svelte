@@ -5,6 +5,7 @@
 	export let disabled = false;
 	// bind:selected se encargará de la comunicación con el padre
 	export let selected: string[] = [];
+    export let maxItems: number | null = null;
 
 	let query = '';
 	let open = false;
@@ -27,13 +28,24 @@
 
 	function toggle(id: string) {
 		if (selected.includes(id)) {
+			// If already selected, remove it
 			selected = selected.filter((x) => x !== id);
 		} else {
-			selected = [...selected, id];
+			// If maxItems is 1, replace the selection (single-select behavior)
+			if (maxItems === 1) {
+				selected = [id];
+			} else if (typeof maxItems === 'number' && maxItems > 0 && selected.length >= maxItems) {
+				// respect maxItems: do not add more than allowed
+				// simply ignore the selection attempt
+				return;
+			} else {
+				selected = [...selected, id];
+			}
 		}
 		// 3. 'dispatch' eliminado. bind:selected se encarga de actualizar al padre.
 		
 		// 2. Limpiamos el input después de seleccionar con clic
+		// If maxItems is 1 we may want to keep the input value empty; otherwise clear to ease further selection
 		query = '';
 		inputEl?.focus(); // Mantenemos el foco para seguir seleccionando
 	}
@@ -103,7 +115,7 @@
 			}}
 			on:focus={() => (open = true)}
 			on:keydown={onKeyDown}
-			{disabled}
+			disabled={disabled || (typeof maxItems === 'number' && maxItems > 0 && selected.length >= maxItems)}
 		/>
 	</div>
 

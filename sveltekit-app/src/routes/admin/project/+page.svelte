@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
-    import { fetchProject, createProject, updateProject, fetchGroups, fetchPeople } from '$lib/services/DatabaseService';
+    import { fetchProject, createProject, updateProject, fetchGroups, fetchPeople, getGalleryThumbUrl } from '$lib/services/DatabaseService';
     import type { ProjectExpanded, Grupo, Persona } from '$lib/types/alltypes';
     import MultiSelect from '$lib/components/MultiSelect.svelte';
     import { goto } from '$app/navigation';
@@ -16,6 +16,12 @@
     let selectedBailarines: string[] = [];
     let selectedMusicos: string[] = [];
     let selectedCantantes: string[] = [];
+    
+    // single selects (kept as arrays internally for binding; we'll send as single values when required)
+    let selectedDireccionGeneral: string[] = [];
+    let selectedDireccionAsistente: string[] = [];
+    let selectedDireccionCoreografico: string[] = [];
+    let selectedProduccionEjecutiva: string[] = [];
 
     // form fields
     let titulo = '';
@@ -24,6 +30,11 @@
     let estreno: string | null = null;
     let grupo = '';
     let programaFile: File | null = null;
+    let galeriaFiles: File[] = [];
+    let project: ProjectExpanded | null = null;
+    let existingGallery: string[] = [];
+    let removedGallery: string[] = [];
+    let isCompressing = false;
 
     $: projectId = $page.url.searchParams.get('id');
     $: editing = !!projectId;
@@ -38,12 +49,21 @@
                 autor = (p as any).autor ?? '';
                 anio = p.anio ?? null;
                 estreno = p.estreno ? new Date(p.estreno).toISOString().slice(0,10) : null;
-                grupo = p.expand?.grupo_id?.id ?? p.grupo_id ?? '';
+                grupo = p.expand?.grupo_id?.id ?? '';
                 // prefill multi-selects from expanded relations (may be objects or ids)
                 selectedActores = (p.expand?.elenco ?? []).map((it: any) => it?.id ?? it);
                 selectedBailarines = (p.expand?.bailarines ?? []).map((it: any) => it?.id ?? it);
                 selectedMusicos = (p.expand?.musicos ?? []).map((it: any) => it?.id ?? it);
                 selectedCantantes = (p.expand?.cantantes ?? []).map((it: any) => it?.id ?? it);
+                
+                // Prefill single-select fields as arrays of ids (keep consistent with MultiSelect binding)
+                selectedDireccionGeneral = (p.expand?.direccion_general ?? []).map((it: any) => it?.id ?? it);
+                selectedDireccionAsistente = (p.expand?.direccion_asistente ?? []).map((it: any) => it?.id ?? it);
+                selectedDireccionCoreografico = (p.expand?.direccion_coreografico ?? []).map((it: any) => it?.id ?? it);
+                selectedProduccionEjecutiva = (p.expand?.produccion_ejecutiva ?? []).map((it: any) => it?.id ?? it);
+                // keep reference to full project for building gallery URLs
+                project = p as ProjectExpanded;
+                existingGallery = Array.isArray(p.galeria) ? [...p.galeria] : [];
             }
         }
     });
@@ -51,6 +71,136 @@
     function onFileChange(e: Event) {
         const input = e.target as HTMLInputElement;
         if (input.files && input.files.length > 0) programaFile = input.files[0];
+    }
+
+    function onGalleryChange(e: Event) {
+        const input = e.target as HTMLInputElement;
+        galeriaFiles = [];
+        if (input.files && input.files.length > 0) {
+            galeriaFiles = Array.from(input.files);
+        }
+    }
+
+    // compress image file in-browser until it's under maxSize (bytes)
+    async function compressIfNeeded(file: File, maxSize = 5 * 1024 * 1024): Promise<File> {
+        if (file.size <= maxSize) return file;
+
+        // create image bitmap for efficient decoding
+        let imgBitmap: ImageBitmap | null = null;
+        try {
+            if ('createImageBitmap' in window) {
+                imgBitmap = await createImageBitmap(file as Blob);
+            }
+        } catch (err) {
+            imgBitmap = null;
+        }
+
+        // fallback to HTMLImageElement
+        if (!imgBitmap) {
+            await new Promise<void>((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        // create bitmap from image element
+                        // @ts-ignore
+                        imgBitmap = (createImageBitmap) ? createImageBitmap(img) as unknown as ImageBitmap : null;
+                        resolve();
+                    } catch (e) {
+                        // if createImageBitmap not available, we'll draw the image element directly later
+                        imgBitmap = null;
+                        resolve();
+                    } finally {
+                        URL.revokeObjectURL(url);
+                    }
+                };
+                img.onerror = (e) => { URL.revokeObjectURL(url); resolve(); };
+                img.src = url;
+            });
+        }
+
+        // helper to convert canvas to blob
+        function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+            return new Promise((res) => canvas.toBlob((b) => res(b as Blob), 'image/jpeg', quality));
+        }
+
+        // draw image to canvas with scaling
+        let width = imgBitmap ? imgBitmap.width : 0;
+        let height = imgBitmap ? imgBitmap.height : 0;
+
+        if (!width || !height) {
+            // fallback: try to get size from file via Image element
+            const url = URL.createObjectURL(file);
+            const img = await new Promise<HTMLImageElement>((resolve) => {
+                const i = new Image();
+                i.onload = () => resolve(i);
+                i.onerror = () => resolve(i);
+                i.src = url;
+            });
+            width = img.naturalWidth || 1600;
+            height = img.naturalHeight || 900;
+            URL.revokeObjectURL(url);
+        }
+
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return file; // can't compress without canvas
+
+        // iterative approach: reduce quality first, then scale down if needed
+        let quality = 0.9;
+        let blob: Blob | null = null;
+        let attempt = 0;
+        let scale = 1.0;
+
+        while (attempt < 10) {
+            canvas.width = Math.max(1, Math.round(width * scale));
+            canvas.height = Math.max(1, Math.round(height * scale));
+
+            // draw source
+            if (imgBitmap) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(imgBitmap, 0, 0, canvas.width, canvas.height);
+            } else {
+                // draw via Image element
+                const url = URL.createObjectURL(file);
+                // eslint-disable-next-line @typescript-eslint/no-shadow
+                await new Promise<void>((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        // if image has transparency we draw white background to avoid black background when converting to jpeg
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    };
+                    img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+                    img.src = url;
+                });
+            }
+
+            blob = await canvasToBlob(canvas, quality);
+            if (!blob) break;
+
+            if (blob.size <= maxSize) break;
+
+            // reduce quality; if quality low already, reduce scale
+            if (quality > 0.4) {
+                quality = Math.max(0.2, quality - 0.15);
+            } else {
+                scale = scale * 0.85; // reduce dimensions
+            }
+            attempt++;
+        }
+
+        if (!blob) return file;
+
+        // create File from blob, preserve original name but ensure .jpg extension
+        const newName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+        const newFile = new File([blob], newName, { type: blob.type });
+        return newFile;
     }
 
     async function onSubmit(e: Event) {
@@ -63,16 +213,92 @@
             if (estreno) form.append('estreno', estreno);
             if (grupo) form.append('grupo_id', grupo);
             if (programaFile) form.append('programa', programaFile);
-            // relations: send as comma-separated list of ids (PocketBase accepts this for relation fields)
-            if (selectedActores && selectedActores.length > 0) form.append('elenco', selectedActores.join(','));
-            if (selectedBailarines && selectedBailarines.length > 0) form.append('bailarines', selectedBailarines.join(','));
-            if (selectedMusicos && selectedMusicos.length > 0) form.append('musicos', selectedMusicos.join(','));
-            if (selectedCantantes && selectedCantantes.length > 0) form.append('cantantes', selectedCantantes.join(','));
+            // Attach gallery image files (if any) — compress images > 5MB before appending
+            if (galeriaFiles && galeriaFiles.length > 0) {
+                const MAX = 5 * 1024 * 1024;
+                const processed: File[] = [];
+                isCompressing = true;
+                try {
+                    for (const f of galeriaFiles) {
+                        if (f.size > MAX) {
+                            console.log('Compressing large image before upload:', f.name, f.size);
+                        }
+                        try {
+                            const out = await compressIfNeeded(f, MAX);
+                            processed.push(out);
+                        } catch (err) {
+                            console.warn('Compression failed for', f.name, ', sending original file.', err);
+                            processed.push(f);
+                        }
+                    }
+                } finally {
+                    isCompressing = false;
+                }
+                processed.forEach((f) => form.append('galeria', f));
+            }
+            // relations: send arrays of ids
+            // relations: append arrays where backend expects arrays
+            if (selectedActores && selectedActores.length > 0) {
+                selectedActores.forEach(id => form.append('elenco', id));
+            } else {
+                // ensure empty relation is cleared
+                form.append('elenco', '');
+            }
+
+            if (selectedBailarines && selectedBailarines.length > 0) {
+                selectedBailarines.forEach(id => form.append('bailarines', id));
+            } else {
+                form.append('bailarines', '');
+            }
+
+            if (selectedMusicos && selectedMusicos.length > 0) {
+                selectedMusicos.forEach(id => form.append('musicos', id));
+            } else {
+                form.append('musicos', '');
+            }
+
+            if (selectedCantantes && selectedCantantes.length > 0) {
+                selectedCantantes.forEach(id => form.append('cantantes', id));
+            } else {
+                form.append('cantantes', '');
+            }
+
+            // Single relations: send as plain string (first selected id) when present
+            if (selectedDireccionGeneral && selectedDireccionGeneral.length > 0) {
+                form.append('direccion_general', selectedDireccionGeneral[0]);
+            } else {
+                form.append('direccion_general', '');
+            }
+            if (selectedDireccionAsistente && selectedDireccionAsistente.length > 0) {
+                form.append('direccion_asistente', selectedDireccionAsistente[0]);
+            } else {
+                form.append('direccion_asistente', '');
+            }
+            // direccion_coreografico is expected as an array per backend example
+            if (selectedDireccionCoreografico && selectedDireccionCoreografico.length > 0) {
+                selectedDireccionCoreografico.forEach(id => form.append('direccion_coreografico[]', id));
+            } else {
+                form.append('direccion_coreografico', '');
+            }
+            if (selectedProduccionEjecutiva && selectedProduccionEjecutiva.length > 0) {
+                form.append('produccion_ejecutiva', selectedProduccionEjecutiva[0]);
+            } else {
+                form.append('produccion_ejecutiva', '');
+            }
+            // Include info about removed existing images so backend can delete them
+            if (removedGallery && removedGallery.length > 0) {
+                removedGallery.forEach(name => form.append('galeria_delete[]', name));
+            }
+            
 
             if (editing && projectId) {
+                // Console log all form entries (helps debugging what's actually being sent)
+                console.log('Submitting update for project ID:', projectId, 'form entries:', Array.from(form.entries()));
+
                 await updateProject(projectId, form);
                 alert('Proyecto actualizado');
             } else {
+                console.log('Submitting create with form entries:', Array.from(form.entries()));
                 await createProject(form);
                 alert('Proyecto creado');
             }
@@ -89,8 +315,8 @@
     Datos generales
     <div class="grid gap-6 mb-6 md:grid-cols-2">
         <div>
-            <label for="titulo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Título</label>
-            <input bind:value={titulo} type="text" id="titulo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="La Ratonera" required />
+            <label for="nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Título</label>
+            <input bind:value={titulo} type="text" id="nombre" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="La Ratonera" required />
         </div>
         <div>
             <label for="autor" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Autor (Opcional)</label>
@@ -105,8 +331,8 @@
             <input bind:value={estreno} type="date" id="estreno" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="123-45-678" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}" />
         </div>
         <div>
-            <label for="grupo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Producción</label>
-            <select bind:value={grupo} id="grupo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required >
+            <label for="grupo_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Producción</label>
+            <select bind:value={grupo} id="grupo_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required >
                 <option value="">Selecciona un grupo</option>
                 {#each groups as g}
                     <option value={g.id}>{g.nombre}</option>
@@ -114,50 +340,125 @@
             </select>
         </div>
         <div>
-            <label for="pdm" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Programa de mano</label>
-            <input on:change={onFileChange} type="file" id="pdm" class="block w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+            <label for="programa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Programa de mano</label>
+            <input on:change={onFileChange} type="file" id="programa" class="block w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
         </div>
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Imágenes de galería
+                <input on:change={onGalleryChange} type="file" id="galeria" accept="image/*" multiple class="block w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white mt-2" />
+            </label>
+            {#if galeriaFiles.length > 0}
+                <div class="mt-2 text-sm text-gray-600">{galeriaFiles.length} archivo{galeriaFiles.length === 1 ? '' : 's'}</div>
+            {/if}
+        </div>
+
+        {#if existingGallery && existingGallery.length > 0}
+            <div class="mt-4">
+                <h3 class="text-sm font-medium text-gray-900 dark:text-white">Imágenes existentes</h3>
+                <div class="grid grid-cols-3 gap-3 mt-2">
+                    {#each existingGallery as filename}
+                        <div class="relative border rounded overflow-hidden">
+                            {#if project}
+                                <img src={getGalleryThumbUrl(project, filename, 240, 160, 40)} alt={filename} class="w-full h-32 object-cover" />
+                            {/if}
+                            <button type="button" on:click={() => {
+                                // remove from existingGallery and add to removedGallery
+                                existingGallery = existingGallery.filter(f => f !== filename);
+                                removedGallery = [...removedGallery, filename];
+                            }} class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 text-xs">Eliminar</button>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+        {/if}
+        {#if removedGallery && removedGallery.length > 0}
+            <div class="mt-3">
+                <h4 class="text-sm font-medium text-red-600">Imágenes marcadas para eliminar ({removedGallery.length})</h4>
+                <div class="flex gap-2 mt-2 flex-wrap">
+                    {#each removedGallery as name}
+                        <div class="bg-red-50 text-red-800 px-2 py-1 rounded text-sm flex items-center gap-2">
+                            <span class="truncate max-w-xs">{name}</span>
+                            <button type="button" on:click={() => {
+                                // undo: move back from removedGallery to existingGallery
+                                removedGallery = removedGallery.filter(n => n !== name);
+                                existingGallery = [name, ...existingGallery];
+                            }} class="text-red-600 underline text-xs">Deshacer</button>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+        {/if}
     </div>
     Créditos
     <div class="grid gap-6 mb-6 md:grid-cols-2">
         <div>
-            <label for="direccion_general" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dirección General</label>
-            <input type="text" id="direccion_general" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Alberto Ontiveros" required />
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dirección General
+                <MultiSelect 
+                    items={people} 
+                    bind:selected={selectedDireccionGeneral} 
+                    placeholder="Buscar director general..."
+                    maxItems={1} />
+            </label>
         </div> 
         <div>
-            <label for="direccion_asistente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Asistente de Dirección</label>
-            <input type="text" id="direccion_asistente" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Alberto Ontiveros" required />
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Asistente de Dirección
+                <MultiSelect 
+                    items={people} 
+                    bind:selected={selectedDireccionAsistente} 
+                    placeholder="Buscar asistente de dirección..."
+                    maxItems={1} />
+            </label>
         </div> 
         <div>
-            <label for="direccion_coreo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dirección Coreográfica</label>
-            <input type="text" id="direccion_coreo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Alberto Ontiveros" required />
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dirección Coreográfica
+                <MultiSelect 
+                    items={people} 
+                    bind:selected={selectedDireccionCoreografico} 
+                    placeholder="Buscar director coreográfico..."
+                    maxItems={1} />
+            </label>
         </div> 
         <div>
-            <label for="produccion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Producción Ejecutiva</label>
-            <input type="text" id="produccion" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Patricio Garza" required />
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Producción Ejecutiva
+                <MultiSelect 
+                    items={people} 
+                    bind:selected={selectedProduccionEjecutiva} 
+                    placeholder="Buscar productor ejecutivo..."
+                    maxItems={1} />
+            </label>
         </div>
     </div>
     
      
     <div class="mb-6">
-        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Actores</label>
-        <MultiSelect items={people} bind:selected={selectedActores} placeholder="Buscar actores..." />
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Actores
+            <MultiSelect items={people} bind:selected={selectedActores} placeholder="Buscar actores..." />
+        </label>
     </div>
     <div class="mb-6">
-        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Bailarines</label>
-        <MultiSelect items={people} bind:selected={selectedBailarines} placeholder="Buscar bailarines..." />
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Bailarines
+            <MultiSelect items={people} bind:selected={selectedBailarines} placeholder="Buscar bailarines..." />
+        </label>
     </div>
     <div class="mb-6">
-        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Músicos</label>
-        <MultiSelect items={people} bind:selected={selectedMusicos} placeholder="Buscar músicos..." />
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Músicos
+            <MultiSelect items={people} bind:selected={selectedMusicos} placeholder="Buscar músicos..." />
+        </label>
     </div>
     <div class="mb-6">
-        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cantantes</label>
-        <MultiSelect items={people} bind:selected={selectedCantantes} placeholder="Buscar cantantes..." />
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cantantes
+            <MultiSelect items={people} bind:selected={selectedCantantes} placeholder="Buscar cantantes..." />
+        </label>
     </div>
     
-    <div class="flex gap-3">
-        <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">{editing ? 'Actualizar' : 'Crear'}</button>
+    <div class="flex gap-3 items-center">
+        <button type="submit" disabled={isCompressing} class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-60 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">{editing ? 'Actualizar' : 'Crear'}</button>
         <button type="button" on:click={() => goto('/admin')} class="text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg px-4 py-2">Volver</button>
+        {#if isCompressing}
+            <div class="ml-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                Comprimiendo imágenes...
+            </div>
+        {/if}
     </div>
 </form>
