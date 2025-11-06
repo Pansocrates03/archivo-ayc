@@ -66,6 +66,18 @@
         }
     }
 
+    // Ensure current page images are proactively loaded and marked so opacity transition works
+    $: if (typeof window !== 'undefined' && project && currentGallerySlice && currentGallerySlice.length > 0) {
+        currentGallerySlice.forEach(imgName => {
+            if (!loadedImages.has(imgName)) {
+                const pre = new Image();
+                pre.onload = () => markLoaded(imgName);
+                pre.onerror = () => markLoaded(imgName);
+                pre.src = getGalleryThumbUrl(project, imgName, 150, 110, 40);
+            }
+        });
+    }
+
     import { onMount } from 'svelte';
     import PersonaList from '$lib/components/PersonaList.svelte';
     onMount(() => {
