@@ -1,7 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { projectsPreviewStore } from "$lib/stores/projectPereviewStore";
-    import { fetchGroups } from '$lib/services/DatabaseService';
+    import { fetchGroups, fetchPeople, createPersona, updatePersona, deletePersona, countProjectsForPersona } from '$lib/services/DatabaseService';
+    import type { Persona } from '$lib/types/alltypes';
     import { goto } from '$app/navigation';
     import type { ProjectPreview, Grupo } from "$lib/types/alltypes";
 
@@ -12,9 +13,28 @@
     let groups: Grupo[] = [];
     let search = '';
     let selectedGroup = '';
+    let people: Persona[] = [];
+    let newPersonName = '';
+    let creatingPerson = false;
+    // UI state for editing/deleting
+    let editingId: string | null = null;
+    let editName = '';
+    let deletingId: string | null = null;
+    // Map personaId -> projects count
+    let projectsCount: Record<string, number> = {};
 
     onMount(async () => {
         groups = await fetchGroups();
+        people = await fetchPeople();
+        // Preload project counts (parallel)
+        await Promise.all(people.map(async (p) => {
+            try {
+                const cnt = await countProjectsForPersona(p.id);
+                projectsCount[p.id] = cnt;
+            } catch (e) {
+                projectsCount[p.id] = 0;
+            }
+        }));
         // ensure first page loaded
         projectsPreviewStore.loadPage(1);
     });
@@ -33,6 +53,63 @@
 
     function onGroupChange() {
         projectsPreviewStore.setGroup(selectedGroup);
+    }
+
+    async function onCreatePerson() {
+        if (!newPersonName || newPersonName.trim().length === 0) return;
+        creatingPerson = true;
+        try {
+            const created = await createPersona({ nombre: newPersonName.trim() });
+            // Añadir al inicio de la lista para visible inmediato
+            people = [created, ...people];
+            // fetch count for created person
+            projectsCount[created.id] = await countProjectsForPersona(created.id);
+            newPersonName = '';
+        } catch (err) {
+            console.error('Error creando persona:', err);
+            // podríamos mostrar un toast aquí
+        } finally {
+            creatingPerson = false;
+        }
+    }
+
+    function startEdit(p: Persona) {
+        editingId = p.id;
+        editName = p.nombre;
+    }
+
+    function cancelEdit() {
+        editingId = null;
+        editName = '';
+    }
+
+    async function saveEdit(p: Persona) {
+        if (!editName || editName.trim().length === 0) return;
+        try {
+            const updated = await updatePersona(p.id, { nombre: editName.trim() });
+            // replace in people
+            people = people.map(pp => pp.id === p.id ? { ...pp, ...updated } : pp);
+            editingId = null;
+            editName = '';
+        } catch (err) {
+            console.error('Error actualizando persona:', err);
+        }
+    }
+
+    async function confirmDelete(p: Persona) {
+        const ok = window.confirm(`Eliminar persona "${p.nombre}"? Esta acción no se puede deshacer.`);
+        if (!ok) return;
+        deletingId = p.id;
+        try {
+            await deletePersona(p.id);
+            // remove locally
+            people = people.filter(pp => pp.id !== p.id);
+            delete projectsCount[p.id];
+        } catch (err) {
+            console.error('Error eliminando persona:', err);
+        } finally {
+            deletingId = null;
+        }
     }
 </script>
 
@@ -57,7 +134,8 @@
         </select>
     </div>
 
-    <div class="relative overflow-x-auto bg-white rounded-lg shadow">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="relative overflow-x-auto bg-white rounded-lg shadow col-span-2">
         <table class="w-full text-sm text-left text-gray-500">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                 <tr>
@@ -80,5 +158,56 @@
                 {/each}
             </tbody>
         </table>
+        </div>
+
+        <!-- Personas panel -->
+        <aside class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-lg font-semibold mb-3">Personas</h2>
+
+            <div class="flex gap-2 mb-3">
+                <input type="text" placeholder="Nombre de persona" bind:value={newPersonName} class="flex-1 px-3 py-2 border rounded-md" />
+                <button on:click={onCreatePerson} class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={creatingPerson}>
+                    {#if creatingPerson}
+                        Creando...
+                    {:else}
+                        Crear
+                    {/if}
+                </button>
+            </div>
+
+            <div class="max-h-96 overflow-auto">
+                {#if people.length === 0}
+                    <p class="text-sm text-gray-500">No hay personas aún</p>
+                {:else}
+                    <ul class="space-y-2">
+                        {#each people as p}
+                            <li class="flex items-center justify-between p-2 border rounded">
+                                <div class="flex-1">
+                                    {#if editingId === p.id}
+                                        <div class="flex gap-2">
+                                            <input class="px-2 py-1 border rounded flex-1" bind:value={editName} />
+                                            <button on:click={() => saveEdit(p)} class="px-2 py-1 bg-blue-600 text-white rounded">Guardar</button>
+                                            <button on:click={cancelEdit} class="px-2 py-1 border rounded">Cancelar</button>
+                                        </div>
+                                    {:else}
+                                        <div class="font-medium">{p.nombre}</div>
+                                        <div class="text-xs text-gray-500">{p.id}</div>
+                                    {/if}
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="text-sm text-gray-600">{projectsCount[p.id] ?? 0} obras</div>
+                                    {#if editingId !== p.id}
+                                        <button on:click={() => startEdit(p)} class="px-2 py-1 bg-yellow-400 rounded text-sm">Editar</button>
+                                        <button on:click={() => confirmDelete(p)} class="px-2 py-1 bg-red-500 text-white rounded text-sm" disabled={deletingId === p.id}>
+                                            {#if deletingId === p.id}Eliminando...{:else}Eliminar{/if}
+                                        </button>
+                                    {/if}
+                                </div>
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
+            </div>
+        </aside>
     </div>
 </div>

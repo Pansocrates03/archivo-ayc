@@ -40,6 +40,20 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
         // const directorName = (safeRecord.expand?.direccion_asistente ? (safeRecord.expand.direccion_asistente as any)?.nombre : undefined) ?? 'undefined';
         // console.log(`Obra obtenida: ${safeRecord.nombre ?? '<sin nombre>'}, director ${directorName}`);
 
+        // Convertir campo 'thumbnail' (filename) a URL si existe
+        try {
+            if ((safeRecord as any).thumbnail) {
+                const thumb = (safeRecord as any).thumbnail;
+                if (typeof thumb === 'string') {
+                    (safeRecord as any).thumbnail = pb.files.getURL(record, thumb);
+                } else if (Array.isArray(thumb) && thumb.length > 0) {
+                    (safeRecord as any).thumbnail = pb.files.getURL(record, thumb[0]);
+                }
+            }
+        } catch (e) {
+            // ignore conversion errors
+        }
+
         console.log('Musicos cargados:', safeRecord.expand?.musicos?.length ?? 0);
         return safeRecord;
     } catch(err: any) {
@@ -77,17 +91,34 @@ export async function fetchProjectsPreview(
             .collection('proyectos')
             .getList(page, perPage, {
                 filter: filterString,
-                fields: 'id,nombre,anio,estreno,grupo_id,programa,collectionId,collectionName',
+                fields: 'id,nombre,anio,estreno,programa,grupo_id,collectionId,collectionName,thumbnail',
                 sort: '-estreno,-anio'
             });
 
         console.log(`Proyectos de preview obtenidos:`, res.items.length, 'de', res.totalItems);
         
-        const items = res.items.map((proyecto: any) => ({
-            ...proyecto,
-            thumbnail: undefined,
-            thumbnailLoading: false
-        })) as ProjectPreview[];
+        const items = res.items.map((proyecto: any) => {
+            // Convert PocketBase file reference to a full URL when possible
+            let thumbUrl: string | undefined = undefined;
+            try {
+                if (proyecto.thumbnail) {
+                    if (typeof proyecto.thumbnail === 'string') {
+                        thumbUrl = pb.files.getURL(proyecto, proyecto.thumbnail);
+                    } else if (Array.isArray(proyecto.thumbnail) && proyecto.thumbnail.length > 0) {
+                        thumbUrl = pb.files.getURL(proyecto, proyecto.thumbnail[0]);
+                    }
+                }
+            } catch (e) {
+                // ignore and leave undefined
+            }
+
+            return {
+                ...proyecto,
+                // Use server-provided thumbnail URL when available; otherwise undefined so client can generate one
+                thumbnail: thumbUrl ?? undefined,
+                thumbnailLoading: false
+            } as ProjectPreview;
+        }) as ProjectPreview[];
         
         return { 
             items, 
@@ -184,6 +215,58 @@ export async function fetchPeople(): Promise<Persona[]>{
     } catch(err) {
         console.error('Error al cargar los grupos:', err);
         return [];
+    }
+}
+
+export async function createPersona(data: { nombre: string }): Promise<any> {
+    try {
+        return await pb.collection('personas').create(data);
+    } catch (err: any) {
+        console.error('Error creating persona:', err);
+        throw err;
+    }
+}
+
+export async function updatePersona(id: string, data: { nombre?: string }): Promise<any> {
+    try {
+        return await pb.collection('personas').update(id, data);
+    } catch (err: any) {
+        console.error('Error updating persona:', err);
+        throw err;
+    }
+}
+
+export async function deletePersona(id: string): Promise<any> {
+    try {
+        return await pb.collection('personas').delete(id);
+    } catch (err: any) {
+        console.error('Error deleting persona:', err);
+        throw err;
+    }
+}
+
+/**
+ * Devuelve la cantidad total de proyectos asociados a una persona usando filtros en PocketBase
+ */
+export async function countProjectsForPersona(personaId: string): Promise<number> {
+    try {
+        const pid = String(personaId).replace(/"/g, '\\"');
+        const terms = [
+            `elenco ~ "${pid}"`,
+            `bailarines ~ "${pid}"`,
+            `musicos ~ "${pid}"`
+        ];
+        const filterQuery = terms.join(' || ');
+
+        const res = await pb.collection('proyectos').getList(1, 1, {
+            filter: filterQuery,
+            fields: 'id'
+        });
+
+        return res.totalItems ?? 0;
+    } catch (err) {
+        console.error('Error counting projects for persona:', err);
+        return 0;
     }
 }
 
