@@ -20,6 +20,11 @@
     let editingId: string | null = null;
     let editName = '';
     let deletingId: string | null = null;
+
+    // Lista filtrada de personas usando newPersonName como filtro
+    $: filteredPeople = newPersonName
+        ? people.filter(p => p.nombre.toLowerCase().includes(newPersonName.toLowerCase()))
+        : people;
     // Map personaId -> projects count
     let projectsCount: Record<string, number> = {};
 
@@ -164,23 +169,42 @@
         <aside class="bg-white rounded-lg shadow p-4">
             <h2 class="text-lg font-semibold mb-3">Personas</h2>
 
-            <div class="flex gap-2 mb-3">
-                <input type="text" placeholder="Nombre de persona" bind:value={newPersonName} class="flex-1 px-3 py-2 border rounded-md" />
-                <button on:click={onCreatePerson} class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={creatingPerson}>
-                    {#if creatingPerson}
-                        Creando...
-                    {:else}
-                        Crear
-                    {/if}
-                </button>
+            <div class="relative mb-3">
+                <form class="flex gap-2">
+                    <div class="relative flex-1">
+                        <input 
+                            type="text" 
+                            placeholder="Buscar o crear persona..." 
+                            bind:value={newPersonName} 
+                            class="w-full px-3 py-2 pl-9 border rounded-md"
+                        />
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                    </div>
+                    <button 
+                        on:click={onCreatePerson} 
+                        type="submit"
+                        class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50" 
+                        disabled={creatingPerson || !newPersonName.trim() || filteredPeople.some(p => p.nombre.toLowerCase() === newPersonName.trim().toLowerCase())}
+                    >
+                        {#if creatingPerson}
+                            Creando...
+                        {:else if filteredPeople.some(p => p.nombre.toLowerCase() === newPersonName.trim().toLowerCase())}
+                            Existe
+                        {:else}
+                            Crear
+                        {/if}
+                    </button>
+                </form>
             </div>
 
             <div class="max-h-96 overflow-auto">
                 {#if people.length === 0}
                     <p class="text-sm text-gray-500">No hay personas aún</p>
+                {:else if filteredPeople.length === 0}
+                    <p class="text-sm text-gray-500">No se encontraron personas que coincidan con la búsqueda</p>
                 {:else}
                     <ul class="space-y-2">
-                        {#each people as p}
+                        {#each filteredPeople as p}
                             <li class="flex items-center justify-between p-2 border rounded">
                                 <div class="flex-1">
                                     {#if editingId === p.id}

@@ -211,7 +211,9 @@ export async function updateProject(id: string, data: Record<string, any>): Prom
 
 export async function fetchPeople(): Promise<Persona[]>{
     try {
-        return await pb.collection('personas').getFullList();
+        return await pb.collection('personas').getFullList({
+            sort: 'nombre'
+        }); 
     } catch(err) {
         console.error('Error al cargar los grupos:', err);
         return [];
