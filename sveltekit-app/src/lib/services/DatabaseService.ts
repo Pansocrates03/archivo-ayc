@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-export const pb = new PocketBase('https://pocketbase-production-f5d2.up.railway.app');
+export const pb = new PocketBase('http://127.0.0.1:8090/');
 
 import type { Grupo, Persona, ProjectExpanded, ProjectPreview } from '$lib/types/alltypes';
 

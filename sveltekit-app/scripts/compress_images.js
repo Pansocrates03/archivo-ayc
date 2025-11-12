@@ -2,7 +2,7 @@ import pocketbase from 'pocketbase';
 // Note: this script requires the `sharp` and `form-data` packages. Install with:
 // npm install sharp form-data
 
-const pb = new pocketbase('https://pocketbase-production-f5d2.up.railway.app');
+const pb = new pocketbase('http://127.0.0.1:8090/');
 
 // Config
 const TARGET_BYTES = 5 * 1024 * 1024; // 5 MB

@@ -13,7 +13,7 @@ import puppeteer from 'puppeteer';
 // 2. AÑADIR la importación de 'Blob' de 'buffer'.
 import { Blob } from 'buffer';
 
-const PB_URL = 'https://pocketbase-production-f5d2.up.railway.app';
+const PB_URL = 'http://127.0.0.1:8090/';
 const PB_ADMIN_EMAIL = 'e.s.baccio@gmail.com'; // <-- ¡IMPORTANTE!
 const PB_ADMIN_PASSWORD = 'essibaPOCKETBASE03*'; // <-- ¡IMPORTANTE!
 
