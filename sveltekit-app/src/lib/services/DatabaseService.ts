@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
-import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+import { POCKETBASE_URL } from '$env/static/private';
 
-export const pb = new PocketBase(PUBLIC_POCKETBASE_URL);
+export const pb = new PocketBase(POCKETBASE_URL);
 
 import type { Grupo, Persona, ProjectExpanded, ProjectPreview } from '$lib/types/alltypes';
 
