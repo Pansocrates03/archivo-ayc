@@ -77,3 +77,8 @@ En esta sección mostraré como configurar el DNS para que el link sea el compra
 
 1. En Hostinger ir a la sección DNS
 2. Hacer click en redireccionamiento
+
+# Recuperación de copia de seguridad
+Para recuperar la copia de seguridad se deberá:
+1. Entrar a la URL del backend (pocketbase) y añadir "/_/", por ejemplo, si la URL generada es `https://mamitaspuebla.com` deberás ingresar a `https://mamitaspuebla.com/_/`
+2. En este caso deberás añadir

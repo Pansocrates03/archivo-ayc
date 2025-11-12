@@ -1,5 +1,7 @@
 import PocketBase from 'pocketbase';
-export const pb = new PocketBase('http://127.0.0.1:8090/');
+import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+
+export const pb = new PocketBase(PUBLIC_POCKETBASE_URL);
 
 import type { Grupo, Persona, ProjectExpanded, ProjectPreview } from '$lib/types/alltypes';
 
@@ -7,7 +9,7 @@ import type { Grupo, Persona, ProjectExpanded, ProjectPreview } from '$lib/types
 const thumbnailUrlCache = new Map<string, string>();
 
 export async function fetchProject(id:string): Promise<ProjectExpanded> {
-    try {
+    try {   
         const record = await pb.collection('proyectos').getOne(id, {
             expand: 'grupo_id, direccion_general, direccion_asistente, direccion_coreografico, produccion_ejecutiva, elenco, bailarines, musicos, cantantes, autor'
         });

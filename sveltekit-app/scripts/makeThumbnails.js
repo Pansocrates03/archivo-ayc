@@ -13,7 +13,7 @@ import puppeteer from 'puppeteer';
 // 2. AÑADIR la importación de 'Blob' de 'buffer'.
 import { Blob } from 'buffer';
 
-const PB_URL = 'http://127.0.0.1:8090/';
+const PB_URL = 'https://pocketbase-cloudrun-244595609794.northamerica-south1.run.app';
 const PB_ADMIN_EMAIL = 'e.s.baccio@gmail.com'; // <-- ¡IMPORTANTE!
 const PB_ADMIN_PASSWORD = 'essibaPOCKETBASE03*'; // <-- ¡IMPORTANTE!
 

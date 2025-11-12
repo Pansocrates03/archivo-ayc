@@ -149,8 +149,10 @@
                             }
                         }, 150);
                     };
-                    window.addEventListener('scroll', scrollHandler);
-                    removeScroll = () => window.removeEventListener('scroll', scrollHandler);
+                    // Cast window to any to avoid TS 'never' inference in SSR/typed contexts
+                    const win: any = window;
+                    win.addEventListener('scroll', scrollHandler);
+                    removeScroll = () => win.removeEventListener('scroll', scrollHandler);
                 }
             }
         } catch (err) {
@@ -223,6 +225,7 @@
                         </h2>
                         <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                             {#each groupedPlays[year] as play (play.id)}
+                                <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
                                 <article 
                                     class="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2" 
                                     on:click={() => handlePlayClick(play)} 
