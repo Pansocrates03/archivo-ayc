@@ -1,9 +1,9 @@
 import pocketbase from 'pocketbase';
 // Note: this script requires the `sharp` and `form-data` packages. Install with:
 // npm install sharp form-data
-import { POCKETBASE_URL } from '$env/static/private';
+import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 // Get environment variables for PocketBase
-const PB_URL = POCKETBASE_URL || 'http://127.0.0.1:8090';
+const PB_URL = PUBLIC_POCKETBASE_URL;
 const pb = new pocketbase(PB_URL);
 
 // Config

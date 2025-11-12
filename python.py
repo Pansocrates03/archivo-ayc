@@ -107,7 +107,7 @@ def main() -> int:
 	parser.add_argument('--collection', default='personas', help='Collection name (default: personas)')
 	args = parser.parse_args()
 
-	base_url = get_env('POCKETBASE_URL', 'http://127.0.0.1:8090')
+	base_url = get_env('PUBLIC_POCKETBASE_URL', 'http://127.0.0.1:8090')
 	#admin_token = get_env('POCKETBASE_ADMIN_TOKEN')
 	#admin_email = get_env('POCKETBASE_ADMIN_EMAIL')
 	#admin_password = get_env('POCKETBASE_ADMIN_PASSWORD')
