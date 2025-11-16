@@ -34,6 +34,7 @@ export async function fetchProject(id:string): Promise<ProjectExpanded> {
                 bailarines: Array.isArray(expanded.bailarines) ? expanded.bailarines : (expanded.bailarines ? [expanded.bailarines] : []),
                 musicos: Array.isArray(expanded.musicos) ? expanded.musicos : (expanded.musicos ? [expanded.musicos] : []),
                 cantantes: Array.isArray(expanded.cantantes) ? expanded.cantantes : (expanded.cantantes ? [expanded.cantantes] : []),
+                staff: Array.isArray(expanded.staff) ? expanded.staff : (expanded.staff ? [expanded.staff] : []),
                 autor: expanded.autor ?? undefined
             }
         } as unknown as ProjectExpanded;
@@ -142,7 +143,9 @@ export async function obtenerObrasPorPersona(personaId: string): Promise<Project
     const terms = [
         `elenco ~ "${pid}"`,
         `bailarines ~ "${pid}"`,
-        `musicos ~ "${pid}"`
+        `musicos ~ "${pid}"`,
+        `cantantes ~ "${pid}"`,
+        `staff ~ "${pid}"`
     ];
     const filterQuery = terms.join(' || ');
     
@@ -156,10 +159,14 @@ export async function obtenerObrasPorPersona(personaId: string): Promise<Project
             // Podrías usar expand si quisieras mostrar a los co-actores, pero no es necesario para el objetivo
             // expand: 'elenco' 
         });
+        console.log(`Obras encontradas para persona ${personaId}:`, result.totalItems);
 
         
         return result.items as ProjectPreview[];
     } catch (error: any) {
+        if(error.status === 400) {
+            console.error("Error de validación al buscar obras por persona:", error.message);
+        }
         console.error("Error al buscar obras por persona:", error.message);
         return [];
     }
@@ -206,7 +213,13 @@ export async function updateProject(id: string, data: Record<string, any>): Prom
         }
         return await pb.collection('proyectos').update(id, data);
     } catch (err: any) {
-        console.error('Error updating project:', err);
+        if(err.status === 400 && err.data) {
+            console.error('Validation errors:', err.data);
+        }
+        else {
+            console.error('Error updating project:', err);
+        }
+
         throw err;
     }
 }
@@ -256,9 +269,15 @@ export async function countProjectsForPersona(personaId: string): Promise<number
     try {
         const pid = String(personaId).replace(/"/g, '\\"');
         const terms = [
+            `direccion_general ~ "${pid}"`,
+            `direccion_asistente ~ "${pid}"`,
+            `direccion_coreografico ~ "${pid}"`,
+            `produccion_ejecutiva ~ "${pid}"`,
             `elenco ~ "${pid}"`,
             `bailarines ~ "${pid}"`,
-            `musicos ~ "${pid}"`
+            `musicos ~ "${pid}"`,
+            `cantantes ~ "${pid}"`,
+            `staff ~ "${pid}"`
         ];
         const filterQuery = terms.join(' || ');
 

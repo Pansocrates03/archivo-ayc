@@ -8,11 +8,10 @@
 
     export let data: PageData;
     let { projects, persona } = data;
+    console.log('Projects for persona:', projects);
 
     const thumbnailService = new ThumbnailService();
     let allGroups: Grupo[] = [];
-
-    interface GroupedProjects { [year: number]: ProjectPreview[] }
 
 
     function groupProjectByGroup(projects: ProjectPreview[]): { [groupId: string]: ProjectPreview[] } {
