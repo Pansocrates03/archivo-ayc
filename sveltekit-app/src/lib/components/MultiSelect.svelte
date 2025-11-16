@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { createPersona } from '$lib/services/DatabaseService';
+
 	// 1. Eliminamos 'createEventDispatcher' y 'onMount' que ya no son necesarios
 	export let items: { id: string; nombre: string }[] = [];
 	export let placeholder = 'Buscar...';
@@ -12,6 +14,7 @@
 	let highlighted = -1;
 	let inputEl: HTMLInputElement | null = null;
 	let wrapperEl: HTMLDivElement; // <--- Para detectar clics fuera
+	let isCreating = false;
 
 	// Reactive statements para eficiencia
 	$: filtered = query.trim()
@@ -25,6 +28,9 @@
 
 	// 3. Lógica movida fuera de onMount
 	$: if (!open) highlighted = -1;
+
+	// Detectar si el query actual existe en items
+	$: queryExists = query.trim() === '' || items.some((i) => i.nombre.toLowerCase() === query.trim().toLowerCase());
 
 	function toggle(id: string) {
 		if (selected.includes(id)) {
@@ -65,6 +71,26 @@
 		}
 	}
 
+	async function createNewPersona() {
+		const trimmedName = query.trim();
+		if (!trimmedName) return;
+
+		isCreating = true;
+		try {
+			const newPersona = await createPersona({ nombre: trimmedName });
+			// Agregar a items
+			items = [...items, { id: newPersona.id, nombre: newPersona.nombre }];
+			// Seleccionar automáticamente
+			toggle(newPersona.id);
+			query = '';
+		} catch (err) {
+			console.error('Error creando persona:', err);
+			alert('Error al crear persona');
+		} finally {
+			isCreating = false;
+		}
+	}
+
 	function onKeyDown(e: KeyboardEvent) {
 		if (e.key === 'ArrowDown') {
 			highlighted = Math.min(highlighted + 1, filtered.length - 1);
@@ -78,6 +104,9 @@
 			if (open && highlighted >= 0 && filtered[highlighted]) {
 				toggle(filtered[highlighted].id);
 				// 2. 'query = '' ' eliminado de aquí, porque toggle() ya lo hace.
+			} else if (!queryExists && query.trim()) {
+				// Si el query no existe en items, crear nuevo registro
+				createNewPersona();
 			}
 		} else if (e.key === 'Escape') {
 			open = false;
@@ -121,10 +150,26 @@
 
 	{#if open}
 		<ul class="absolute z-50 mt-1 w-full bg-white border rounded-md max-h-48 overflow-auto shadow-lg">
-			{#if filtered.length === 0}
+			{#if filtered.length === 0 && !query.trim()}
 				<li class="px-3 py-2 text-sm text-gray-500">No se encontraron personas</li>
+			{:else if filtered.length === 0 && query.trim() && !queryExists}
+				<li>
+					<button
+						type="button"
+						class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+						on:click={createNewPersona}
+						disabled={isCreating}
+					>
+						{#if isCreating}
+							Creando "{query}"...
+						{:else}
+							+ Crear "{query}"
+						{/if}
+					</button>
+				</li>
 			{/if}
 			{#each filtered as it, idx (it.id)}
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<li
 					class={`flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 ${
 						highlighted === idx ? 'bg-gray-100' : ''
