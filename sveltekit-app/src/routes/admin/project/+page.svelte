@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { fetchProject, createProject, updateProject, fetchGroups, fetchPeople, getGalleryThumbUrl } from '$lib/services/DatabaseService';
+    import { ThumbnailService } from '$lib/services/ThumbnailService';
     import type { ProjectExpanded, Grupo, Persona } from '$lib/types/alltypes';
     import MultiSelect from '$lib/components/MultiSelect.svelte';
     import { goto } from '$app/navigation';
@@ -37,6 +38,9 @@
     let existingGallery: string[] = [];
     let removedGallery: string[] = [];
     let isCompressing = false;
+    let isGeneratingThumb = false;
+
+    const thumbnailService = new ThumbnailService();
 
     $: projectId = $page.url.searchParams.get('id');
     $: editing = !!projectId;
@@ -94,7 +98,44 @@
             if (estreno) form.append('estreno', estreno);
             if (grupo) form.append('grupo_id', grupo);
             if (programaFile) form.append('programa', programaFile);
-            // Attach gallery image files (if any) — compress images > 5MB before appending
+            
+            // Si se sube un PDF como 'programa', generar thumbnail de la primera página
+            if (programaFile && programaFile.type === 'application/pdf') {
+                try {
+                    isGeneratingThumb = true;
+                    const blobUrl = URL.createObjectURL(programaFile);
+                    try {
+                        console.log('Generando miniatura del programa PDF para:', programaFile.name);
+                        const dataUrl = await thumbnailService.generateThumbnail(blobUrl, 320);
+                        console.log('Miniatura generada para programa PDF.');
+                        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+                            console.log('Adjuntando miniatura generada al formulario.');
+                            // convertir dataURL a Blob y luego a File
+                            const arr = dataUrl.split(',');
+                            const mimeMatch = arr[0].match(/:(.*?);/);
+                            const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+                            const bstr = atob(arr[1]);
+                            let n = bstr.length;
+                            const u8arr = new Uint8Array(n);
+                            while (n--) u8arr[n] = bstr.charCodeAt(n);
+                            const blob = new Blob([u8arr], { type: mime });
+                            const safeTitle = titulo ? titulo.replace(/\s+/g,'_').slice(0,80) : 'programa';
+                            const thumbFile = new File([blob], `${safeTitle}-thumb.png`, { type: mime });
+                            form.append('thumbnail', thumbFile);
+                        }
+                    } finally {
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                } catch (err) {
+                    console.warn('No se pudo generar miniatura del programa:', err);
+                } finally {
+                    isGeneratingThumb = false;
+                }
+            } else {
+                console.log('No se generó miniatura del programa: no es un PDF.');
+            }
+            
+            // Attach gallery image files (if any) – compress images > 5MB before appending
             if (galeriaFiles && galeriaFiles.length > 0) {
                 const MAX = 5 * 1024 * 1024;
                 const processed: File[] = [];
@@ -200,7 +241,7 @@
 </script>
 
 <form on:submit|preventDefault={onSubmit} class="p-4 bg-white rounded-lg border border-gray-200 shadow-md dark:bg-gray-800 dark:border-gray-700 w-full max-w-2xl mx-auto">
-    Datos generales
+    <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Datos generales</h2>
     <div class="grid gap-6 mb-6 md:grid-cols-2">
         <div>
             <label for="nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Título</label>
@@ -231,7 +272,10 @@
         </div>
         <div>
             <label for="programa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Programa de mano</label>
-            <input on:change={onFileChange} type="file" id="programa" class="block w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+            <input on:change={onFileChange} type="file" id="programa" accept="application/pdf" class="block w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+            {#if programaFile}
+                <p class="mt-1 text-xs text-gray-500">📄 {programaFile.name}</p>
+            {/if}
         </div>
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Imágenes de galería
@@ -243,9 +287,9 @@
         </div>
 
         {#if existingGallery && existingGallery.length > 0}
-            <div class="mt-4">
-                <h3 class="text-sm font-medium text-gray-900 dark:text-white">Imágenes existentes</h3>
-                <div class="grid grid-cols-3 gap-3 mt-2">
+            <div class="mt-4 col-span-2">
+                <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Imágenes existentes</h3>
+                <div class="grid grid-cols-3 gap-3">
                     {#each existingGallery as filename}
                         <div class="relative border rounded overflow-hidden">
                             {#if project}
@@ -255,14 +299,14 @@
                                 // remove from existingGallery and add to removedGallery
                                 existingGallery = existingGallery.filter(f => f !== filename);
                                 removedGallery = [...removedGallery, filename];
-                            }} class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 text-xs">Eliminar</button>
+                            }} class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 text-xs hover:bg-red-700">Eliminar</button>
                         </div>
                     {/each}
                 </div>
             </div>
         {/if}
         {#if removedGallery && removedGallery.length > 0}
-            <div class="mt-3">
+            <div class="mt-3 col-span-2">
                 <h4 class="text-sm font-medium text-red-600">Imágenes marcadas para eliminar ({removedGallery.length})</h4>
                 <div class="flex gap-2 mt-2 flex-wrap">
                     {#each removedGallery as name}
@@ -272,14 +316,15 @@
                                 // undo: move back from removedGallery to existingGallery
                                 removedGallery = removedGallery.filter(n => n !== name);
                                 existingGallery = [name, ...existingGallery];
-                            }} class="text-red-600 underline text-xs">Deshacer</button>
+                            }} class="text-red-600 underline text-xs hover:text-red-800">Deshacer</button>
                         </div>
                     {/each}
                 </div>
             </div>
         {/if}
     </div>
-    Créditos
+    
+    <h2 class="text-xl font-bold mb-4 mt-6 text-gray-900 dark:text-white">Créditos</h2>
     <div class="grid gap-6 mb-6 md:grid-cols-2">
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dirección General
@@ -346,13 +391,25 @@
         </label>
     </div>
     
-    <div class="flex gap-3 items-center">
-        <button type="submit" disabled={isCompressing} class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-60 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">{editing ? 'Actualizar' : 'Crear'}</button>
-        <button type="button" on:click={() => goto('/admin')} class="text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg px-4 py-2">Volver</button>
+    <div class="flex gap-3 items-center flex-wrap">
+        <button type="submit" disabled={isCompressing || isGeneratingThumb} class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-60 disabled:cursor-not-allowed font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">{editing ? 'Actualizar' : 'Crear'}</button>
+        <button type="button" on:click={() => goto('/admin')} class="text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium">Volver</button>
         {#if isCompressing}
-            <div class="ml-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
                 Comprimiendo imágenes...
+            </div>
+        {/if}
+        {#if isGeneratingThumb}
+            <div class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-400">
+                <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                Generando miniatura del PDF...
             </div>
         {/if}
     </div>

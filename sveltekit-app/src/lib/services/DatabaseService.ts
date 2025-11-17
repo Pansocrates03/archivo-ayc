@@ -288,7 +288,7 @@ export async function countProjectsForPersona(personaId: string): Promise<number
 
         return res.totalItems ?? 0;
     } catch (err) {
-        console.error('Error counting projects for persona:', err);
+        //console.error('Error counting projects for persona:', err);
         return 0;
     }
 }

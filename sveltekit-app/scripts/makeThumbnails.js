@@ -14,8 +14,8 @@ import puppeteer from 'puppeteer';
 import { Blob } from 'buffer';
 
 import PB_URL from '$lib/index.js';
-const PB_ADMIN_EMAIL = 'e.s.baccio@gmail.com'; // <-- ¡IMPORTANTE!
-const PB_ADMIN_PASSWORD = 'essibaPOCKETBASE03*'; // <-- ¡IMPORTANTE!
+const PB_ADMIN_EMAIL = ''; // <-- ¡IMPORTANTE!
+const PB_ADMIN_PASSWORD = ''; // <-- ¡IMPORTANTE!
 
 const pb = new PocketBase(PB_URL);
 
