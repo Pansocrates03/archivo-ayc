@@ -4,7 +4,7 @@
     import { fetchGroups, fetchPeople, createPersona, updatePersona, deletePersona, countProjectsForPersona } from '$lib/services/DatabaseService';
     import type { Persona } from '$lib/types/alltypes';
     import { goto } from '$app/navigation';
-    import type { ProjectPreview, Grupo } from "$lib/types/alltypes";
+    import type { Grupo } from "$lib/types/alltypes";
 
     // reactive store
     $: store = $projectsPreviewStore;
@@ -121,48 +121,72 @@
 <div class="p-6">
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-2xl font-bold">Admin Dashboard</h1>
-            <p class="text-sm text-gray-600">Gestiona obras: crear, filtrar y editar.</p>
+            <h1 class="text-3xl font-extrabold">Admin Dashboard</h1>
+            <p class="text-sm text-gray-600 mt-1">Gestiona obras, busca, filtra y edita de forma rápida.</p>
         </div>
-        <div class="flex gap-3">
-            <button on:click={onCreate} class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Crear obra</button>
+        <div class="flex gap-3 items-center">
+            <button on:click={onCreate} class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700">
+                <span class="text-lg">＋</span>
+                <span class="font-medium">Crear obra</span>
+            </button>
         </div>
     </div>
 
-    <div class="flex gap-3 mb-4">
-        <input type="text" placeholder="Buscar por nombre..." bind:value={search} on:input={onSearchChange} class="px-3 py-2 border rounded-md w-72" />
-        <select bind:value={selectedGroup} on:change={onGroupChange} class="px-3 py-2 border rounded-md">
-            <option value="">Todos los grupos</option>
-            {#each groups as g}
-                <option value={g.id}>{g.nombre}</option>
-            {/each}
-        </select>
+    <div class="flex gap-4 mb-6 items-center">
+        <div class="flex items-center gap-3 bg-white rounded-lg shadow px-4 py-2">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"/></svg>
+            <input type="text" placeholder="Buscar por nombre..." bind:value={search} on:input={onSearchChange} class="outline-none w-72" />
+        </div>
+
+        <div class="bg-white rounded-lg shadow px-3 py-2">
+            <select bind:value={selectedGroup} on:change={onGroupChange} class="outline-none">
+                <option value="">Todos los grupos</option>
+                {#each groups as g}
+                    <option value={g.id}>{g.nombre}</option>
+                {/each}
+            </select>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="relative overflow-x-auto bg-white rounded-lg shadow col-span-2">
-        <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3">Nombre</th>
-                    <th class="px-6 py-3">Año</th>
-                    <th class="px-6 py-3">Producción</th>
-                    <th class="px-6 py-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {#each allProjects as project}
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-6 py-4 font-medium text-gray-900">{project.nombre}</td>
-                        <td class="px-6 py-4">{project.anio}</td>
-                        <td class="px-6 py-4">{project.grupo_id}</td>
-                        <td class="px-6 py-4">
-                            <button on:click={() => onEdit(project.id)} class="mr-2 px-3 py-1 bg-yellow-400 text-sm rounded">Editar</button>
-                        </td>
-                    </tr>
-                {/each}
-            </tbody>
-        </table>
+        <div class="relative overflow-hidden bg-white rounded-lg shadow col-span-2">
+            <div class="p-4 border-b">
+                <h3 class="text-lg font-semibold">Obras</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 w-16">Mini</th>
+                            <th class="px-4 py-3">Nombre</th>
+                            <th class="px-4 py-3 w-24">Año</th>
+                            <th class="px-4 py-3 w-40">Producción</th>
+                            <th class="px-4 py-3 w-28">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each allProjects as project}
+                            <tr class="border-b hover:bg-gray-50 align-top">
+                                <td class="px-4 py-3">
+                                    {#if project.thumbnail}
+                                        <img src={project.thumbnail} alt="thumb" class="h-12 w-10 object-cover rounded" />
+                                    {:else}
+                                        <div class="h-12 w-10 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">No img</div>
+                                    {/if}
+                                </td>
+                                <td class="px-4 py-3 font-medium text-gray-900">{project.nombre}</td>
+                                <td class="px-4 py-3">{project.anio}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600 truncate">{project.grupo_id}</td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <button on:click={() => onEdit(project.id)} class="p-2 rounded hover:bg-yellow-100" title="Editar">✏️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Personas panel -->
@@ -208,7 +232,7 @@
                             <li class="flex items-center justify-between p-2 border rounded">
                                 <div class="flex-1">
                                     {#if editingId === p.id}
-                                        <div class="flex gap-2">
+                                        <div class="flex gap-2 items-center">
                                             <input class="px-2 py-1 border rounded flex-1" bind:value={editName} />
                                             <button on:click={() => saveEdit(p)} class="px-2 py-1 bg-blue-600 text-white rounded">Guardar</button>
                                             <button on:click={cancelEdit} class="px-2 py-1 border rounded">Cancelar</button>
@@ -221,9 +245,9 @@
                                 <div class="flex items-center gap-2">
                                     <div class="text-sm text-gray-600">{projectsCount[p.id] ?? 0} obras</div>
                                     {#if editingId !== p.id}
-                                        <button on:click={() => startEdit(p)} class="px-2 py-1 bg-yellow-400 rounded text-sm">Editar</button>
-                                        <button on:click={() => confirmDelete(p)} class="px-2 py-1 bg-red-500 text-white rounded text-sm" disabled={deletingId === p.id}>
-                                            {#if deletingId === p.id}Eliminando...{:else}Eliminar{/if}
+                                        <button on:click={() => startEdit(p)} class="p-2 rounded hover:bg-yellow-100" title="Editar">✏️</button>
+                                        <button on:click={() => confirmDelete(p)} class="p-2 rounded hover:bg-red-100" title="Eliminar" disabled={deletingId === p.id}>
+                                            {#if deletingId === p.id}⏳{:else}🗑️{/if}
                                         </button>
                                     {/if}
                                 </div>
