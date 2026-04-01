@@ -1,7 +1,8 @@
+import type { BunRequest } from "bun";
 import { pg } from "./services";
 
 export const artistRoutes = {
-  GET: async (req: Request) => {
+  GET: async (req: BunRequest) => {
     const url = new URL(req.url);
     const page = url.searchParams.get('page') || '1';
     const search = url.searchParams.get('search') || '';
@@ -38,7 +39,7 @@ export const artistRoutes = {
     });
   },
   
-  POST: async (req: Request) => {
+  POST: async (req: BunRequest) => {
     const body = await req.json();
     const { nombre, matricula } = body;
 
@@ -66,7 +67,7 @@ export const artistRoutes = {
 };
 
 export const artistDetailRoute = {
-  GET: async (req: Request) => {
+  GET: async (req: BunRequest) => {
     const { id } = req.params as { id: string };
     console.log("Received request for artist with id:", id);
     const rows = await pg`
@@ -98,6 +99,13 @@ export const artistDetailRoute = {
       FROM personas pe
       WHERE pe.id = ${id};
     `;
+
+    const BUCKET_URL = process.env.S3_ENDPOINT + "/" + process.env.S3_BUCKET || "http://localhost:9000/actec-bucket";
+    rows[0].trayectoria = rows[0].trayectoria.map((proyecto: any) => ({
+      ...proyecto,
+      thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,
+    }));
+
     return new Response(JSON.stringify(rows[0]), {
       headers: { "Content-Type": "application/json" },
       status: 200

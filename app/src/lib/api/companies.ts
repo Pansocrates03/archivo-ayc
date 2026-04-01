@@ -1,7 +1,10 @@
+import type { BunRequest } from "bun";
 import { pg } from "./services";
 
+const BUCKET_URL = process.env.S3_ENDPOINT + "/" + process.env.S3_BUCKET || "http://localhost:9000/actec-bucket";
+
 export const companiesRoute = {
-  GET: async (req: Request) => {
+  GET: async (req: BunRequest) => {
     const url = new URL(req.url);
     const search = url.searchParams.get('search') || '';
 
@@ -16,7 +19,7 @@ export const companiesRoute = {
     });
   },
 
-  POST: async (req: Request) => {
+  POST: async (req: BunRequest) => {
     const body = await req.json();
     const { nombre, descripcion, disciplina, banner_url } = body;
     console.log("Received data to create company:", body);
@@ -44,9 +47,9 @@ export const companiesRoute = {
 };
 
 export const companyDetailRoute = {
-  GET: async (req: Request) => {
-    const { id } = req.params as { id: string };
-    console.log("Received request for company with id:", id);
+  GET: async (req: BunRequest) => {
+    const { tag } = req.params as { tag: string };
+    console.log("Received request for company with tag:", tag);
     
     const rows = await pg`
       SELECT 
@@ -73,8 +76,14 @@ export const companyDetailRoute = {
           '[]'::jsonb
         ) AS proyectos
       FROM grupos g
-      WHERE g.id = ${id};
+      WHERE g.tag = ${tag};
     `;
+
+    rows[0].proyectos = rows[0].proyectos.map((proyecto: any) => ({
+      ...proyecto,
+      thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,
+      programa_url: proyecto.programa_url ? `${BUCKET_URL}${proyecto.programa_url}` : null,
+    }));
     
     return new Response(JSON.stringify(rows[0]), {
       headers: { "Content-Type": "application/json" },

@@ -1,19 +1,62 @@
-import { pg } from "./services";
+import { pg, s3, ilovepdf } from "./services";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { unlink } from "node:fs/promises";
+import sharp from "sharp";
+import type { BunRequest } from "bun";
 
 // --- CONFIGURACIÓN MINIO ---
-const s3 = new S3Client({
-  endpoint: process.env.S3_ENDPOINT,
-  region: process.env.S3_REGION,
-  credentials: { accessKeyId: process.env.S3_ACCESS_KEY || "minioadmin", secretAccessKey: process.env.S3_SECRET_KEY || "minioadmin" },
-  forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true" || true, // Por defecto true para compatibilidad con MinIO
-});
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || "actec-bucket";
-const MINIO_PUBLIC_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
+const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
+const BUCKET_URL = process.env.S3_ENDPOINT + "/" + BUCKET_NAME || "http://localhost:9000/actec-bucket";
+
+// --- FUNCIONES AUXILIARES DE COMPRESIÓN ---
+
+/**
+ * Comprime una imagen PNG hasta que pese menos de 250KiB usando Sharp
+ */
+async function compressImage(inputPath: string, outputPath: string, maxSizeKB: number = 250) {
+  try {
+    const maxBytes = maxSizeKB * 1024;
+    let quality = 85;
+    let width = 1024;
+
+    while (quality >= 40 && width >= 300) {
+      const buffer = await sharp(inputPath)
+        .resize(width, Math.round(width * 1.5), { withoutEnlargement: true })
+        .png({ quality })
+        .toBuffer();
+
+      if (buffer.length < maxBytes) {
+        await Bun.write(outputPath, buffer);
+        console.log(`✓ Imagen comprimida: ${(buffer.length / 1024).toFixed(2)}KB (w:${width}, q:${quality})`);
+        return outputPath;
+      }
+
+      quality -= 10;
+      if (quality < 40) {
+        width -= 200;
+        quality = 85;
+      }
+    }
+
+    // Si aún es muy grande, usar la versión más comprimida
+    const finalBuffer = await sharp(inputPath)
+      .resize(300, 450, { withoutEnlargement: true })
+      .png({ quality: 40 })
+      .toBuffer();
+
+    await Bun.write(outputPath, finalBuffer);
+    console.log(`✓ Imagen comprimida (forzado): ${(finalBuffer.length / 1024).toFixed(2)}KB`);
+    return outputPath;
+  } catch (error) {
+    console.warn("⚠ Error al comprimir imagen, usando original");
+    await Bun.write(outputPath, await Bun.file(inputPath).arrayBuffer());
+    return outputPath;
+  }
+}
 
 // --- FUNCIÓN AUXILIAR PARA PROCESAR ARCHIVOS ---
 async function uploadProjectFiles(projectId: string, formData: FormData) {
+  console.log(`Iniciando proceso de archivos para proyecto ${projectId}`);
   const programaFile = formData.get('programa') as File | null;
   const galeriaFiles = formData.getAll('galeria') as File[];
 
@@ -21,32 +64,43 @@ async function uploadProjectFiles(projectId: string, formData: FormData) {
   let thumbnail_url = null;
   let galeria_urls: string[] = [];
 
-  // 1. Procesar el PDF y generar el Thumbnail
+  // 1. Procesar el PDF, comprimirlo con iLovePDF y generar el Thumbnail
   if (programaFile) {
     const tempPdfPath = `/tmp/${crypto.randomUUID()}.pdf`;
+    const tempPngPath = `/tmp/${crypto.randomUUID()}.png`;
+    const compressedPngPath = `/tmp/${crypto.randomUUID()}_compressed.png`;
+    
     await Bun.write(tempPdfPath, programaFile);
 
-    // Extraer la página 1 como PNG
+    // Comprimir PDF con iLovePDF
+
+    // Extraer la página 1 como PNG desde el PDF
     const { stdout } = Bun.spawnSync([
-      "pdftoppm", "-png", "-f", "1", "-l", "1", "-singlefile", tempPdfPath
+      "pdftoppm", "-png", "-f", "1", "-l", "1", "-r", "100", "-singlefile", tempPdfPath, tempPngPath.replace('.png', '')
     ]);
 
-    if (stdout.length > 0) {
+    if (stdout && stdout.length > 0) {
+      // Comprimir PNG a menos de 250KB
+      const finalPngPath = await compressImage(tempPngPath, compressedPngPath, 250);
+
       const thumbKey = `proyectos/${projectId}/thumbnail/portada.png`;
-      await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: thumbKey, Body: stdout, ContentType: "image/png" }));
-      thumbnail_url = `${MINIO_PUBLIC_URL}/${thumbKey}`;
+      const pngBuffer = await Bun.file(finalPngPath).arrayBuffer();
+      await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: thumbKey, Body: pngBuffer, ContentType: "image/png" }));
+      thumbnail_url = `/${thumbKey}`;
     }
 
-    // Subir el PDF original
+    // Subir el PDF (comprimido o original)
     const progKey = `proyectos/${projectId}/programa/programa_mano.pdf`;
-    await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: progKey, Body: await programaFile.arrayBuffer(), ContentType: "application/pdf" }));
-    programa_url = `${MINIO_PUBLIC_URL}/${progKey}`;
+    const pdfBuffer = await Bun.file(tempPdfPath).arrayBuffer();
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: progKey, Body: pdfBuffer, ContentType: "application/pdf" }));
+    programa_url = `/${progKey}`;
 
-    // Limpiar archivo temporal de forma nativa y multiplataforma
+    // Limpiar archivos temporales
     try {
-      await unlink(tempPdfPath);
+      const filesToClean = [tempPdfPath, tempPngPath, compressedPngPath];
+      await Promise.all(filesToClean.map(f => unlink(f).catch(() => {})));
     } catch (err) {
-      console.error(`Advertencia: No se pudo borrar el archivo temporal ${tempPdfPath}`, err);
+      console.error(`Advertencia: Error al limpiar archivos temporales`, err);
     }
   }
 
@@ -57,7 +111,7 @@ async function uploadProjectFiles(projectId: string, formData: FormData) {
       const galKey = `proyectos/${projectId}/galeria/${crypto.randomUUID()}_${safeName}`;
       
       await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: galKey, Body: await file.arrayBuffer(), ContentType: file.type }));
-      galeria_urls.push(`${MINIO_PUBLIC_URL}/${galKey}`);
+      galeria_urls.push(`/${galKey}`);
     }
   }
 
@@ -96,7 +150,13 @@ export const projectsRoute = {
       `;
     }
 
-    return new Response(JSON.stringify(rows), { headers: { "Content-Type": "application/json" }, status: 200 });
+    const proyectosConUrls = rows.map(proyecto => ({
+      ...proyecto,
+      thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,
+      programa_url: proyecto.programa_url ? `${BUCKET_URL}${proyecto.programa_url}` : null,
+    }));
+
+    return new Response(JSON.stringify(proyectosConUrls), { headers: { "Content-Type": "application/json" }, status: 200 });
   },
 
   POST: async (req: Request) => {
@@ -160,7 +220,7 @@ export const projectsRoute = {
 };
 
 export const projectDetailRoute = {
-  GET: async (req: Request) => {
+  GET: async (req: BunRequest ) => {
     const { id } = req.params as { id: string };
     
     const rows = await pg`
@@ -180,11 +240,21 @@ export const projectDetailRoute = {
       LEFT JOIN grupos g ON p.grupo_id = g.id
       WHERE p.id = ${id}
     `;
+
+    // Interceptamos los datos y armamos la URL absoluta
+    const proyectosConUrls = rows.map(proyecto => ({
+      ...proyecto,
+      thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,
+      programa_url: proyecto.programa_url ? `${BUCKET_URL}${proyecto.programa_url}` : null,
+    }));
     
-    return new Response(JSON.stringify(rows[0]), { headers: { "Content-Type": "application/json" }, status: 200 });
+    return new Response(JSON.stringify(proyectosConUrls[0]), {
+        headers: { "Content-Type": "application/json" },
+        status: 200
+    });
   },
 
-  PUT: async (req: Request) => {
+  PUT: async (req: BunRequest) => {
     const { id } = req.params as { id: string };
 
     try {
@@ -207,7 +277,7 @@ export const projectDetailRoute = {
         await sql`
             UPDATE proyectos
             SET nombre = ${nombre},
-                estreno = ${estreno ? new Date(estreno) : null},
+                estreno = ${estreno},
                 grupo_id = ${grupo_id},
                 youtube_url = ${youtube_url},
                 programa_url = COALESCE(${programa_url}, programa_url),

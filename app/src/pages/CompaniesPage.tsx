@@ -26,7 +26,7 @@ const CompaniesPage = () => {
 
   // Función al seleccionar una compañía
   const handleSelectCompany = (company: any) => {
-    window.location.href = `/companias/${company.id}`;
+    window.location.href = `/companias/${company.tag}`;
   };
 
   return (
