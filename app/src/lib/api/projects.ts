@@ -6,7 +6,7 @@ import type { BunRequest } from "bun";
 
 // --- CONFIGURACIÓN MINIO ---
 const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
-const BUCKET_URL = process.env.S3_ENDPOINT + "/" + BUCKET_NAME || "http://localhost:9000/actec-bucket";
+const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
 
 // --- FUNCIONES AUXILIARES DE COMPRESIÓN ---
 

@@ -100,7 +100,7 @@ export const artistDetailRoute = {
       WHERE pe.id = ${id};
     `;
 
-    const BUCKET_URL = process.env.S3_ENDPOINT + "/" + process.env.S3_BUCKET || "http://localhost:9000/actec-bucket";
+    const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
     rows[0].trayectoria = rows[0].trayectoria.map((proyecto: any) => ({
       ...proyecto,
       thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,

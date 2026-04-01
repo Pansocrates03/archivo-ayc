@@ -1,7 +1,8 @@
 import type { BunRequest } from "bun";
 import { pg } from "./services";
 
-const BUCKET_URL = process.env.S3_ENDPOINT + "/" + process.env.S3_BUCKET || "http://localhost:9000/actec-bucket";
+const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
+
 
 export const companiesRoute = {
   GET: async (req: BunRequest) => {
