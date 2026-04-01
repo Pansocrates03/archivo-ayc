@@ -1,13 +1,46 @@
-version: '3.8'
+# Crea una bdd postgres y un servidor S3 con MINIO
 
+version: '3.8'
 services:
-  svelte-frontend:
-    build:
-      context: ./svelte-app
-      dockerfile: Dockerfile
-    container_name: svelte-frontend
-    restart: always
+  db:
+    image: postgres:16
+    container_name: archivoayc_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: myapp_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     ports:
-      - "80:80"
-    depends_on:
-      - pocketbase
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d myapp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+  minio:
+    image: minio/minio:latest
+    container_name: archivoayc_storage
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/minio_data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: minio server /minio_data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+      # Para correr la app necesito RUN apt-get update && apt-get install -y poppler-utils
+
+volumes:
+  pgdata:
+  minio_data:   
