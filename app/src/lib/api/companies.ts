@@ -1,20 +1,26 @@
-import type { BunRequest } from "bun"; // o Request, dependiendo de tu router
+import type { BunRequest, S3File } from "bun"; // o Request, dependiendo de tu router
 import { pg } from "./services";
-import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { s3, write } from "bun"
+
+import { S3Client } from "bun";
+const client = new S3Client({
+  accessKeyId: process.env.S3_ACCESS_KEY,
+  secretAccessKey: process.env.S3_SECRET_KEY,
+  bucket: process.env.S3_BUCKET,
+  endpoint: process.env.S3_ENDPOINT
+  // sessionToken: "..."
+  // acl: "public-read",
+  // endpoint: "https://s3.us-east-1.amazonaws.com",
+  // endpoint: "https://<account-id>.r2.cloudflarestorage.com", // Cloudflare R2
+  // endpoint: "https://<region>.digitaloceanspaces.com", // DigitalOcean Spaces
+  // endpoint: "http://localhost:9000", // MinIO
+});
+
+//import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 // --- CONFIGURACIÓN MINIO/TIGRIS ---
 const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
 const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
-
-const s3 = new S3Client({
-  endpoint: process.env.S3_ENDPOINT || "http://localhost:9000",
-  region: process.env.S3_REGION || "us-east-1",
-  credentials: { 
-    accessKeyId: process.env.S3_ACCESS_KEY || "minioadmin", 
-    secretAccessKey: process.env.S3_SECRET_KEY || "minioadmin" 
-  },
-  forcePathStyle: true,
-});
 
 export const companiesRoute = {
   GET: async (req: BunRequest) => {
@@ -161,6 +167,11 @@ export const companyDetailRoute = {
             const safeName = bannerFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
             const bannerKey = `companias/${dbId}/banner_${Date.now()}_${safeName}`;
             
+            const s3file: S3File = client.file(bannerKey);
+            const banenrBuffer = await bannerFile.arrayBuffer();
+            await s3file.write(banenrBuffer);
+
+            /*
             await s3.send(new PutObjectCommand({
                 Bucket: BUCKET_NAME,
                 Key: bannerKey,
@@ -168,6 +179,7 @@ export const companyDetailRoute = {
                 ContentType: bannerFile.type,
                 ACL: "public-read"
             }));
+            */
             
             newBannerUrl = `/${bannerKey}`;
         }
