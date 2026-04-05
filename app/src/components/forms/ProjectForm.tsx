@@ -1,35 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Save, X, Users, Upload, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
+import { compressImage } from '@/lib/utils';
 
 interface Rol { id: string; nombre: string; categoria: string; requerido: boolean; }
 interface Compania { id: string; tag: string; nombre: string; sede: string | null; }
 interface Artista { id: string; nombre: string; }
-
-// --- FUNCIÓN DE COMPRESIÓN DE IMÁGENES (Se mantiene igual) ---
-const compressImage = (file: File, maxSizeMB = 1): Promise<File> => {
-  // ... tu código de compresión exacto ...
-  return new Promise((resolve) => {
-    const fileSizeMB = file.size / 1024 / 1024;
-    if (fileSizeMB <= maxSizeMB) return resolve(file);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        if (width > height) { if (width > 1920) { height *= 1920 / width; width = 1920; } } 
-        else { if (height > 1080) { width *= 1080 / height; height = 1080; } }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }) : file), 'image/jpeg', 0.8);
-      };
-    };
-  });
-};
 
 const ProjectForm: React.FC = () => {
     // 1. HOOKS DE ENRUTAMIENTO

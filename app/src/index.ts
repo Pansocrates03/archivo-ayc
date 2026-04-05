@@ -13,7 +13,7 @@ const server = serve({
     "/api/artists": artistRoutes,
     "/api/artists/:id": artistDetailRoute,
     "/api/companies": companiesRoute,
-    "/api/companies/:tag": companyDetailRoute,
+    "/api/companies/:id": companyDetailRoute,
     "/api/proyectos": projectsRoute,
     "/api/proyectos/:id": projectDetailRoute,
     "/api/roles": rolesRoute,
