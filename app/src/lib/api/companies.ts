@@ -3,8 +3,8 @@ import { pg } from "./services";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 // --- CONFIGURACIÓN MINIO/TIGRIS ---
-const BUCKET_URL = process.env.PUBLIC_STORAGE_URL || "http://localhost:9000/actec-bucket";
-const BUCKET_NAME = process.env.BUCKET_NAME || "actec-bucket";
+const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
+const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
 
 const s3 = new S3Client({
   endpoint: process.env.S3_ENDPOINT || "http://localhost:9000",
