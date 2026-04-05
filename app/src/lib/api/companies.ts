@@ -3,24 +3,30 @@ import { pg } from "./services";
 import { s3, write } from "bun"
 
 import { S3Client } from "bun";
+
+const IS_LOCAL = process.env.STORAGE_ENV === "local";
+const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
+const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
+
+const BASE_URL = IS_LOCAL
+  ? `${process.env.S3_ENDPOINT}/${BUCKET_NAME}` // MinIO
+  : process.env.S3_ENDPOINT; // Tigris
+
+function buildFilePath(key:string) {
+  return IS_LOCAL ? `/${BUCKET_NAME}/${key}` : `/${key}`;
+}
+
 const client = new S3Client({
   accessKeyId: process.env.S3_ACCESS_KEY,
   secretAccessKey: process.env.S3_SECRET_KEY,
   bucket: process.env.S3_BUCKET,
-  endpoint: process.env.S3_ENDPOINT
-  // sessionToken: "..."
-  // acl: "public-read",
-  // endpoint: "https://s3.us-east-1.amazonaws.com",
-  // endpoint: "https://<account-id>.r2.cloudflarestorage.com", // Cloudflare R2
-  // endpoint: "https://<region>.digitaloceanspaces.com", // DigitalOcean Spaces
-  // endpoint: "http://localhost:9000", // MinIO
+  endpoint: process.env.S3_ENDPOINT,
+  acl: "public-read",
 });
 
 //import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
-// --- CONFIGURACIÓN MINIO/TIGRIS ---
-const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
-const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
+
 
 export const companiesRoute = {
   GET: async (req: BunRequest) => {
@@ -167,9 +173,9 @@ export const companyDetailRoute = {
             const safeName = bannerFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
             const bannerKey = `companias/${dbId}/banner_${Date.now()}_${safeName}`;
             
-            const s3file: S3File = client.file(bannerKey);
-            const banenrBuffer = await bannerFile.arrayBuffer();
-            await s3file.write(banenrBuffer);
+            const s3file = client.file(buildFilePath(bannerKey));
+            const bannerBuffer = await bannerFile.arrayBuffer();
+            await s3file.write(bannerBuffer);
 
             /*
             await s3.send(new PutObjectCommand({
