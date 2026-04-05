@@ -1,5 +1,11 @@
 import { pg, s3, ilovepdf } from "./services";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { 
+  S3Client, 
+  PutObjectCommand, 
+  ListObjectsV2Command,
+  DeleteObjectsCommand
+} from "@aws-sdk/client-s3";
+
 import { unlink } from "node:fs/promises";
 import sharp from "sharp";
 import type { BunRequest } from "bun";
@@ -221,6 +227,7 @@ export const projectsRoute = {
 
 export const projectDetailRoute = {
   GET: async (req: BunRequest ) => {
+    console.log("nfjkds")
     const { id } = req.params as { id: string };
     
     const rows = await pg`
@@ -308,6 +315,65 @@ export const projectDetailRoute = {
     } catch (error) {
       console.error(`Error al actualizar el proyecto ${id}:`, error);
       return new Response(JSON.stringify({ error: "Error interno al actualizar." }), { status: 500 });
+    }
+  },
+
+  DELETE: async (req: BunRequest) => {
+    const { id } = req.params as { id: string };
+    console.log(`Iniciando eliminación del proyecto ${id}...`);
+
+    try {
+      // 1. ELIMINAR ARCHIVOS EN S3 (TIGRIS / MINIO) PRIMERO
+      // Buscamos todos los archivos que estén dentro de la "carpeta" del proyecto
+      const prefix = `proyectos/${id}/`;
+      
+      const listedObjects = await s3.send(new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        Prefix: prefix
+      }));
+
+      // Si encontramos archivos, los borramos en lote (Bulk Delete)
+      if (listedObjects.Contents && listedObjects.Contents.length > 0) {
+        const deleteParams = {
+          Bucket: BUCKET_NAME,
+          Delete: {
+            Objects: listedObjects.Contents.map(({ Key }) => ({ Key }))
+          }
+        };
+
+        await s3.send(new DeleteObjectsCommand(deleteParams));
+        console.log(`✅ Se eliminaron ${listedObjects.Contents.length} archivos multimedia del bucket.`);
+      } else {
+        console.log(`ℹ️ No se encontraron archivos en el bucket para el proyecto ${id}.`);
+      }
+
+      // 2. ELIMINAR DATOS DE LA BASE DE DATOS
+      // Usamos una transacción para borrar las dependencias primero
+      await pg.begin(async (sql) => {
+        // Borramos primero los créditos para evitar errores de llave foránea (Foreign Key Constraints)
+        await sql`DELETE FROM creditos WHERE proyecto_id = ${id}`;
+        
+        // Finalmente, borramos el registro maestro del proyecto
+        const result = await sql`DELETE FROM proyectos WHERE id = ${id} RETURNING id`;
+        
+        if (result.length === 0) {
+          throw new Error("El proyecto no existía en la base de datos.");
+        }
+      });
+
+      console.log(`✅ Proyecto ${id} eliminado completamente.`);
+      
+      return new Response(
+        JSON.stringify({ success: true, message: "Proyecto y archivos eliminados correctamente." }), 
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+
+    } catch (error) {
+      console.error(`❌ Error al eliminar el proyecto ${id}:`, error);
+      return new Response(
+        JSON.stringify({ error: "Error interno al eliminar el proyecto." }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
   }
 };

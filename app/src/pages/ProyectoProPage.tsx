@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { timestampToDate } from "@/lib/utils";
+import { Edit } from "lucide-react";
 
 interface ProyectoProPageType {
   id: string;
@@ -42,7 +43,10 @@ export function ProyectoProPage() {
       <Header />
       <div className="max-w-7xl mx-auto p-8 text-center">
         <div>{proyecto?.grupo_nombre}</div>
-        <h1 className="text-5xl font-bold my-4">{proyecto?.proyecto_nombre || "Proyecto"}</h1>
+        <h1 className="text-5xl font-bold my-4">
+          {proyecto?.proyecto_nombre || "Proyecto"}
+          <Edit onClick={() => window.location.href = window.location + '/edit'} className="inline-block ml-2" />
+        </h1>
         <p>{timestampToDate(proyecto?.estreno || "") || "Descripción no disponible."}</p>
       </div>
 

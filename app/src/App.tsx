@@ -9,9 +9,12 @@ import ArtistaProPage from "./pages/ArtistaProPage";
 import ProyectoProPage from "./pages/ProyectoProPage";
 import CompaniaProPage from "./pages/CompaniaProPage";
 
+import ProjectForm from "./components/ProjectForm";
+
 import "./index.css";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 
 
 
@@ -26,8 +29,11 @@ export function App() {
         <Route path="/artistas/:id" element={<ArtistaProPage />} />
         <Route path="/companias" element={<CompaniesPage />} />
         <Route path="/companias/:id" element={<CompaniaProPage />} />
+
         <Route path="/proyectos" element={<ProyectosPage />} />
+        <Route path="/proyectos/nuevo" element={<ProjectForm />} />
         <Route path="/proyectos/:id" element={<ProyectoProPage />} />
+        <Route path="/proyectos/:id/edit" element={<ProjectForm />} />
       </Routes>
     </BrowserRouter>
   );

@@ -9,6 +9,10 @@ import Footer from '@/components/Footer';
 const ProyectosPage = () => {
   const [projects, setProjects] = useState<ProjectWithCompany[]>([]);
 
+  useEffect( () => {
+    if(!window.location.href.includes('proyectos')) window.location.href = "/proyectos"
+  })
+
   async function getProjects(search = "", page = 1) {
     const response = await fetch(`/api/proyectos?search=${encodeURIComponent(search)}&page=${page}`, {});
     const data = await response.json();

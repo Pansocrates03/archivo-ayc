@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Edit2, Save, X, Users, Upload, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
 import { timestampToDate } from '@/lib/utils';
 
-// ... (Mantén tus interfaces Rol, Compania, Artista, Proyecto exactamente igual) ...
-
 interface Rol { id: string; nombre: string; categoria: string; requerido: boolean; created_at: string; updated_at: string; }
 interface Compania { id: string; tag: string; nombre: string; sede: string | null; descripcion: string | null; disciplina: string; banner_url: string; created_at: string; updated_at: string; }
 interface Artista { id: string; nombre: string; matricula: string | null; updated_at: string; }
@@ -258,7 +256,51 @@ const ProjectManager: React.FC = () => {
           </div>
 
           {/* ... Gestión de Créditos (Mantenida igual) ... */}
-          {/* ... Aquí va tu bloque actual de créditos ... */}
+          {/* Gestión de Créditos (Relaciones múltiples) */}
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                <Users className="w-4 h-4" /> Créditos y Elenco
+              </h3>
+              <button type="button" onClick={addCreditRow} className="text-sm bg-white border border-gray-300 text-gray-700 py-1.5 px-3 rounded-md hover:bg-gray-50 font-medium flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Añadir Persona
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {formData.creditos.length === 0 ? (
+                <p className="text-center text-gray-400 py-4 text-sm">No hay créditos asignados a este proyecto.</p>
+              ) : (
+                formData.creditos.map((credito, index) => (
+                  <div key={credito.id} className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+                    <span className="text-xs font-bold text-gray-400 w-6">{index + 1}.</span>
+                    
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs text-gray-500 mb-1">Rol / Puesto</label>
+                      <select required value={credito.rol_id} onChange={e => updateCredit(credito.id, 'rol_id', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Selecciona un rol...</option>
+                        {roles.map(r => <option key={r.id} value={r.id}>{r.nombre} ({r.categoria})</option>)}
+                      </select>
+                    </div>
+
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs text-gray-500 mb-1">Artista / Persona</label>
+                      <select required value={credito.persona_id} onChange={e => updateCredit(credito.id, 'persona_id', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Selecciona persona...</option>
+                        {artistas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                      </select>
+                    </div>
+
+                    <button type="button" onClick={() => removeCreditRow(credito.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors w-full sm:w-auto flex justify-center mt-2 sm:mt-0">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
           <div className="pt-6 border-t flex justify-end gap-3">
             <button type="button" onClick={() => setView('list')} disabled={isSubmitting} className="px-6 py-2.5 rounded-lg font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50">
