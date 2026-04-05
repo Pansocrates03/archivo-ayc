@@ -15,11 +15,12 @@ if (!process.env.ILOVEPDF_PUBLIC_KEY || !process.env.ILOVEPDF_SECRET_KEY) {
 
 export const pg = new SQL(process.env.DATABASE_URL || "");
 
+const IS_LOCAL = process.env.NODE_ENV !== "production";
 export const s3 = new S3Client({
   endpoint: process.env.S3_ENDPOINT,
   region: process.env.S3_REGION,
   credentials: { accessKeyId: process.env.S3_ACCESS_KEY || "minioadmin", secretAccessKey: process.env.S3_SECRET_KEY || "minioadmin" },
-  forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true" || true, // Por defecto true para compatibilidad con MinIO
+  forcePathStyle: IS_LOCAL,
 });
 
 export const ilovepdf = {

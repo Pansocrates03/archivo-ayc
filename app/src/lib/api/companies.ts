@@ -1,27 +1,10 @@
-import type { BunRequest, S3File } from "bun"; // o Request, dependiendo de tu router
-import { pg } from "./services";
-import { s3, write } from "bun"
-
-import { S3Client } from "bun";
+import type { BunRequest } from "bun"; // o Request, dependiendo de tu router
+import { pg, s3 } from "./services";
+import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 // --- CONFIGURACIÓN MINIO/TIGRIS ---
-const BUCKET_URL = process.env.S3_PUBLIC_URL || "http://localhost:9000/actec-bucket";
-const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
-const IS_LOCAL = process.env.NODE_ENV != "production";
-
-console.log("IS_LOCAL", IS_LOCAL)
-
-const client = new S3Client({
-  accessKeyId: process.env.S3_ACCESS_KEY,
-  secretAccessKey: process.env.S3_SECRET_KEY,
-  bucket: IS_LOCAL ? process.env.S3_BUCKET : '',
-  endpoint: process.env.S3_ENDPOINT,
-  acl: "public-read",
-});
-
-//import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
-
-
+const BUCKET_URL = process.env.PUBLIC_STORAGE_URL || "http://localhost:9000/actec-bucket";
+const BUCKET_NAME = process.env.BUCKET_NAME || "actec-bucket";
 
 export const companiesRoute = {
   GET: async (req: BunRequest) => {
@@ -101,13 +84,7 @@ export const companyDetailRoute = {
     const { id } = req.params as { id: string }; 
     
     const rows = await pg`
-      SELECT
-        g.id,
-        g.nombre,
-        g.tag,
-        g.descripcion,
-        g.disciplina,
-        g.banner_url,
+      SELECT g.*,
         COALESCE(
           (
             SELECT jsonb_agg(
@@ -130,7 +107,6 @@ export const companyDetailRoute = {
     if (rows.length === 0) return new Response(JSON.stringify({ error: "Compañía no encontrada" }), { status: 404 });
 
     const company = rows[0];
-    
     
     // Armar URLs absolutas
     company.banner_url = company.banner_url ? `${BUCKET_URL}${company.banner_url}` : null;
@@ -168,11 +144,6 @@ export const companyDetailRoute = {
             const safeName = bannerFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
             const bannerKey = `companias/${dbId}/banner_${Date.now()}_${safeName}`;
             
-            const s3file: S3File = client.file(bannerKey);
-            const banenrBuffer = await bannerFile.arrayBuffer();
-            await s3file.write(banenrBuffer);
-
-            /*
             await s3.send(new PutObjectCommand({
                 Bucket: BUCKET_NAME,
                 Key: bannerKey,
@@ -180,7 +151,6 @@ export const companyDetailRoute = {
                 ContentType: bannerFile.type,
                 ACL: "public-read"
             }));
-            */
             
             newBannerUrl = `/${bannerKey}`;
         }
