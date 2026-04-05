@@ -52,9 +52,11 @@ export const artistRoutes = {
       });
     }
 
+    const matriculaValue = matricula === "" ? null : matricula;
+
     const result = await pg`
       INSERT INTO personas (nombre, matricula)
-      VALUES (${nombre}, ${matricula})
+      VALUES (${nombre}, ${matriculaValue})
       RETURNING id, nombre, matricula, updated_at
     `;
 
@@ -110,5 +112,27 @@ export const artistDetailRoute = {
       headers: { "Content-Type": "application/json" },
       status: 200
     });
+  },
+
+  DELETE: async (req: BunRequest) => {
+    const { id } = req.params as { id: string };
+    console.log(`Iniciando eliminación del artista con ID ${id}...`);
+
+    try {
+      await pg.begin(async (sql) => {
+        const result = await sql`DELETE FROM personas WHERE id = ${id} RETURNING id`;
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Artista eliminado correctamente" }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    } catch(error) {
+      console.error(`❌ Error al eliminar el artista ${id}:`, error);
+      return new Response(
+        JSON.stringify({ error: "Error interno al eliminar el artista." }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   }
 };
