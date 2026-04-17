@@ -130,7 +130,7 @@ export const projectsRoute = {
     const url = new URL(req.url);
     const page = url.searchParams.get('page') || '1';
     const search = url.searchParams.get('search') || '';
-    const limit = 50;
+    const limit = 20; // Debe coincidir con el PAGE_SIZE del frontend
     const offset = (parseInt(page) - 1) * limit;
 
     let rows;
@@ -141,7 +141,7 @@ export const projectsRoute = {
         FROM proyectos p
         LEFT JOIN grupos g ON p.grupo_id = g.id
         WHERE LOWER(unaccent(p.nombre)) LIKE LOWER('%' || ${search} || '%')
-        ORDER BY p.estreno DESC
+        ORDER BY p.estreno DESC, p.id DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
     } else {
@@ -150,7 +150,7 @@ export const projectsRoute = {
                g.nombre AS company_name
         FROM proyectos p
         LEFT JOIN grupos g ON p.grupo_id = g.id
-        ORDER BY p.estreno DESC
+        ORDER BY p.estreno DESC, p.id DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
     }

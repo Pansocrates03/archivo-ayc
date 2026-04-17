@@ -108,6 +108,9 @@ export const artistDetailRoute = {
       thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,
     }));
 
+    // Crear biografía
+    // Ejemplo: Esteban Sierra es un (bailarin, actor, etc.), ha participado en
+
     return new Response(JSON.stringify(rows[0]), {
       headers: { "Content-Type": "application/json" },
       status: 200
