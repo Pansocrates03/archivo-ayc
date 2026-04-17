@@ -13,6 +13,10 @@ const CompaniesPage = () => {
 
   async function getCompanies(search = "") {
     const response = await fetch(`/api/companies?search=${search}`);
+    if(response.status !== 200) {
+      console.error("Error fetching companies:", response.statusText);
+      return;
+    }
     const data = await response.json();
     console.log("Compañías obtenidas del backend");
     setCompanies(data);
@@ -38,7 +42,7 @@ const CompaniesPage = () => {
       <main className="p-6 md:p-10 max-w-7xl mx-auto">
         <PageTitle
           title="Compañías Representativas"
-          description="Descubre los grupos de música, teatro y danza de todos los campus del Tecnológico de Monterrey."
+          description="Descubre los grupos de música, teatro y danza del Tecnológico de Monterrey."
           search={(term) => getCompanies(term)}
           searchPlaceholder='Buscar compañías' />
       

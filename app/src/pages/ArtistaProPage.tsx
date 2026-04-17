@@ -3,6 +3,7 @@ import { Search, User } from "lucide-react";
 import type { Artist } from "@/lib/types";
 import Header from "@/components/Header";
 import ProjectCard from "@/components/ProjectCard";
+import Footer from "@/components/Footer";
 
 interface ArtistaProPageType {
   id: string;
@@ -38,10 +39,9 @@ export function ArtistaProPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Header />
-      <main className="max-w-7xl mx-auto px-6 mt-10">
-      <div className="p-6 max-w-7xl mx-auto bg-gray-50 rounded-xl shadow-sm">
-        <h2 className="text-2xl font-bold text-blue-900 mb-4">{artist && artist.nombre}</h2>
-        <p className="text-gray-700">{artist && artist.nombre} es un (bailarin, actor, cantante, musico) proveniente de campus Monterrey</p>
+      <main className="max-w-7xl min-h-screen mx-auto px-6 mt-10">
+      <div className="p-6 max-w-7xl mx-auto bg-gray-50 rounded-xl shadow-sm mb-6">
+        <h2 className="text-4xl font-bold text-blue-900 text-center">{artist && artist.nombre}</h2>
       </div>
       {/* Grid de Posters */}
         {artist && artist.trayectoria && artist.trayectoria.length > 0 ? (
@@ -60,6 +60,7 @@ export function ArtistaProPage() {
           </div>
         )}
         </main>
+        <Footer />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 import { unlink } from "node:fs/promises";
 import sharp from "sharp";
 import type { BunRequest } from "bun";
+import * as mupdf from "mupdf";
 
 // --- CONFIGURACIÓN MINIO ---
 const BUCKET_NAME = process.env.S3_BUCKET || "actec-bucket";
@@ -79,21 +80,19 @@ async function uploadProjectFiles(projectId: string, formData: FormData) {
     await Bun.write(tempPdfPath, programaFile);
 
     // Comprimir PDF con iLovePDF
+    // Actualización: Ya no se va a comprimir los pdfs, se suben tal cual. La función de compresión se mantiene para el thumbnail nomás.
 
     // Extraer la página 1 como PNG desde el PDF
-    const { stdout } = Bun.spawnSync([
-      "pdftoppm", "-png", "-f", "1", "-l", "1", "-r", "100", "-singlefile", tempPdfPath, tempPngPath.replace('.png', '')
-    ]);
+    const extractedPngPath = await extractFirstPageAsPng(tempPdfPath, tempPngPath);
 
-    if (stdout && stdout.length > 0) {
-      // Comprimir PNG a menos de 250KB
-      const finalPngPath = await compressImage(tempPngPath, compressedPngPath, 250);
+    // Comprimir PNG a menos de 250KB
+    const finalPngPath = await compressImage(extractedPngPath, compressedPngPath, 250);
 
-      const thumbKey = `proyectos/${projectId}/thumbnail/portada.png`;
-      const pngBuffer = await Bun.file(finalPngPath).arrayBuffer();
-      await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: thumbKey, Body: pngBuffer, ContentType: "image/png" }));
-      thumbnail_url = `/${thumbKey}`;
-    }
+    const thumbKey = `proyectos/${projectId}/thumbnail/portada.png`;
+    const pngBuffer = await Bun.file(finalPngPath).arrayBuffer();
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: thumbKey, Body: pngBuffer, ContentType: "image/png" }));
+    thumbnail_url = `/${thumbKey}`;
+    console.log(`✓ Imagen comprimida: ${finalPngPath}`);
 
     // Subir el PDF (comprimido o original)
     const progKey = `proyectos/${projectId}/programa/programa_mano.pdf`;
@@ -103,7 +102,7 @@ async function uploadProjectFiles(projectId: string, formData: FormData) {
 
     // Limpiar archivos temporales
     try {
-      const filesToClean = [tempPdfPath, tempPngPath, compressedPngPath];
+      const filesToClean = [tempPdfPath, extractedPngPath, compressedPngPath];
       await Promise.all(filesToClean.map(f => unlink(f).catch(() => {})));
     } catch (err) {
       console.error(`Advertencia: Error al limpiar archivos temporales`, err);
@@ -377,3 +376,33 @@ export const projectDetailRoute = {
     }
   }
 };
+
+async function extractFirstPageAsPng(pdfPath: string, outputPath: string): Promise<string> {
+  try {
+    const pdfData = await Bun.file(pdfPath).arrayBuffer();
+
+    const doc = mupdf.Document.openDocument(
+      new Uint8Array(pdfData),
+      "application/pdf"
+    );
+
+    const page = doc.loadPage(0); // Página 1 (índice 0)
+
+    const pixmap = page.toPixmap(
+      mupdf.Matrix.scale(1.5, 1.5),       // Escala para buena resolución
+      mupdf.ColorSpace.DeviceRGB,
+      false,                               // Sin canal alpha
+      true                                 // Anti-aliasing
+    );
+
+    const pngData = pixmap.asPNG();
+    await Bun.write(outputPath, pngData);
+
+    console.log(`✓ Página 1 extraída como PNG: ${outputPath}`);
+    return outputPath;
+
+  } catch (error) {
+    console.error("⚠ Error al extraer la primera página del PDF", error);
+    throw error;
+  }
+}

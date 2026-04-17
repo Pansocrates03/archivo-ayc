@@ -25,6 +25,17 @@ interface ProyectoProPageType {
 export function ProyectoProPage() {
   const [proyecto, setProyecto] = useState<ProyectoProPageType | null>(null);
 
+  function proyectoClick() {
+    // proyecto &&  proyecto.programa_url && window.open(proyecto?.programa_url)
+    const matricula = prompt("Por seguridad solo se mostrará el programa de mano completo a quienes han participado en este proyecto.\n\nIngresa tu matrícula o nómina para continuar:", "A0");
+    if (matricula) {
+      alert(`La matrícula ${matricula} no se encuentra registrada. Por seguridad, el programa completo no se puede abrir. Si participaste en este proyecto envía un correo a e.s.baccio@gmail.com para registrar tu matrícula.`);
+    } 
+    
+    // window.open(proyecto?.programa_url);
+    
+  }
+
   const defaultImage = "https://placehold.co/200x300?text=No+Image";
 
   useEffect(() => {
@@ -50,7 +61,7 @@ export function ProyectoProPage() {
         <p>{timestampToDate(proyecto?.estreno || "") || "Descripción no disponible."}</p>
       </div>
 
-      <button className="block w-full group" onClick={() => proyecto &&  proyecto.programa_url && window.open(proyecto?.programa_url)}>
+      <button className="block w-full group" onClick={proyectoClick}>
         <img src={proyecto?.thumbnail_url || defaultImage} alt={proyecto?.proyecto_nombre} className="mx-auto rounded-lg shadow-lg" />
         <p className="text-sm text-gray-500 text-center mt-3 group-hover:text-blue-600 transition-colors">Clic para abrir programa completo →</p>
       </button>

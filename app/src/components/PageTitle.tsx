@@ -32,7 +32,7 @@ const PageTitle: React.FC<{ title: string; description?: string; search: (term: 
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <CirclePlus onClick={() => window.location.href = window.location + '/nuevo'} className="text-gray-400 w-5 h-5" />
+            {/* <CirclePlus onClick={() => window.location.href = window.location + '/nuevo'} className="text-gray-400 w-5 h-5" /> */}
           </div>
         </div>
   );

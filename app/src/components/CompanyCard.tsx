@@ -28,7 +28,7 @@ const CompanyCard: React.FC<{ company: Company; onSelect: (company: any) => void
       <div className="absolute bottom-0 left-0 right-0 p-6 text-left text-white">
         {/* Disciplina o categoría (Etiqueta pequeña) */}
         <span className="inline-block bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
-          {company.disciplina}
+          {company.sede}
         </span>
 
         {/* Nombre de la Compañía (Grande y prominente) */}
