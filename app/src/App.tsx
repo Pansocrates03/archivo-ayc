@@ -11,6 +11,7 @@ import CompaniaProPage from "./pages/CompaniaProPage";
 
 import ProjectForm from "./components/forms/ProjectForm";
 import CompanyForm from "./components/forms/CompanyForm";
+import ArtistaForm from "./components/forms/ArtistaForm";
 
 import "./index.css";
 
@@ -29,6 +30,7 @@ export function App() {
         
         <Route path="/artistas" element={<ArtistasPage />} />
         <Route path="/artistas/:id" element={<ArtistaProPage />} />
+        <Route path="/artistas/:id/edit" element={<ArtistaForm />} />
 
         <Route path="/companias" element={<CompaniesPage />} />
         <Route path="/companias/nuevo" element={<CompanyForm />} />

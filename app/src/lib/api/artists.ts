@@ -40,6 +40,12 @@ export const artistRoutes = {
   },
   
   POST: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Creación de artistas deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
     const body = await req.json();
     const { nombre, matricula } = body;
 
@@ -118,6 +124,12 @@ export const artistDetailRoute = {
   },
 
   DELETE: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Eliminación de artistas deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
     const { id } = req.params as { id: string };
     console.log(`Iniciando eliminación del artista con ID ${id}...`);
 

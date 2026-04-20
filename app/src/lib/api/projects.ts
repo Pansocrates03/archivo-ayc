@@ -165,6 +165,12 @@ export const projectsRoute = {
   },
 
   POST: async (req: Request) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Creación de proyectos deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
     try {
       // 1. Extraer FormData (Ya no usamos req.json)
       const formData = await req.formData();
@@ -261,6 +267,12 @@ export const projectDetailRoute = {
   },
 
   PUT: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Edición de proyectos deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
     const { id } = req.params as { id: string };
 
     try {
@@ -318,6 +330,13 @@ export const projectDetailRoute = {
   },
 
   DELETE: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Eliminación de proyectos deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
+    
     const { id } = req.params as { id: string };
     console.log(`Iniciando eliminación del proyecto ${id}...`);
 

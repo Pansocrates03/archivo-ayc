@@ -56,15 +56,24 @@ export function ProyectoProPage() {
         <div>{proyecto?.grupo_nombre}</div>
         <h1 className="text-5xl font-bold my-4">
           {proyecto?.proyecto_nombre || "Proyecto"}
-          <Edit onClick={() => window.location.href = window.location + '/edit'} className="inline-block ml-2" />
+          {/* <Edit onClick={() => window.location.href = window.location + '/edit'} className="inline-block ml-2" /> */}
         </h1>
         <p>{timestampToDate(proyecto?.estreno || "") || "Descripción no disponible."}</p>
       </div>
 
-      <button className="block w-full group" onClick={proyectoClick}>
-        <img src={proyecto?.thumbnail_url || defaultImage} alt={proyecto?.proyecto_nombre} className="mx-auto rounded-lg shadow-lg" />
-        <p className="text-sm text-gray-500 text-center mt-3 group-hover:text-blue-600 transition-colors">Clic para abrir programa completo →</p>
-      </button>
+      <div className="w-full">
+        <button className="mx-auto block group" onClick={proyectoClick}>
+          <img
+            src={proyecto?.thumbnail_url || defaultImage}
+            alt={proyecto?.proyecto_nombre}
+            // Agregamos un tamaño fijo (ej. w-64 h-96) y object-cover
+            className="w-64 h-96 object-cover rounded-lg shadow-lg mx-auto" 
+          />
+          <p className="text-sm text-gray-500 text-center mt-3 group-hover:text-blue-600 transition-colors">
+            Clic para abrir programa completo →
+          </p>
+        </button>
+      </div>
 
       <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-6 space-y-5">
         <span className="text-lg font-bold">DIRECCIÓN</span>

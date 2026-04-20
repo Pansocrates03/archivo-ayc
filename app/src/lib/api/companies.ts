@@ -29,6 +29,12 @@ export const companiesRoute = {
   },
 
   POST: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Creación de compañías deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
     try {
         // 1. Ahora leemos formData en lugar de JSON
         const formData = await req.formData();
@@ -120,6 +126,13 @@ export const companyDetailRoute = {
   },
 
   PUT: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Edición de compañías deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
+
     const { id } = req.params as { id: string };
     
     try {
@@ -175,6 +188,12 @@ export const companyDetailRoute = {
   },
 
   DELETE: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Eliminación de compañías deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
     const { id } = req.params as { id: string };
     
     try {
