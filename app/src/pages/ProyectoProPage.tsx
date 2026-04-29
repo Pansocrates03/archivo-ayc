@@ -28,13 +28,16 @@ export function ProyectoProPage() {
   function proyectoClick() {
     // proyecto &&  proyecto.programa_url && window.open(proyecto?.programa_url)
     const matricula = prompt("Por seguridad solo se mostrará el programa de mano completo a quienes han participado en este proyecto.\n\nIngresa tu matrícula o nómina para continuar:", "A0");
-    if (matricula == "a00836286" || matricula == "admin") {
-      window.open(proyecto?.programa_url, '_blank');
-    } else {
-      alert(`La matrícula ${matricula} no se encuentra registrada. Por seguridad, el programa completo no se puede abrir. Si participaste en este proyecto envía un correo a e.s.baccio@gmail.com para registrar tu matrícula.`);
-    }
-    
-    // window.open(proyecto?.programa_url);
+
+    fetch(`/api/validate-matricula/${matricula}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.valid) {
+        window.open(proyecto?.programa_url, '_blank');
+      } else {
+        alert(`La matrícula "${matricula}" no se encuentra registrada.\nSi participaste en este proyecto envía un correo a e.s.baccio@gmail.com para registrar tu matrícula.`);
+      }
+    })
     
   }
 

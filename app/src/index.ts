@@ -3,6 +3,7 @@ import index from "./index.html";
 import { artistRoutes, artistDetailRoute } from "./lib/api/artists";
 import { companiesRoute, companyDetailRoute } from "./lib/api/companies";
 import { projectsRoute, projectDetailRoute } from "./lib/api/projects";
+import { validateMatriculaRoute } from "./lib/api/validate";
 import { rolesRoute } from "./lib/api/roles";
 
 const server = serve({
@@ -17,6 +18,7 @@ const server = serve({
     "/api/proyectos": projectsRoute,
     "/api/proyectos/:id": projectDetailRoute,
     "/api/roles": rolesRoute,
+    "/api/validate-matricula/:matricula": validateMatriculaRoute,
 
     '/api/*': (req: Request) => {
       console.warn(`No API route matched for ${req.url}`);
