@@ -54,27 +54,35 @@ const ProyectosPage = () => {
 
   // IntersectionObserver
   useEffect(() => {
-  if (!hasMore) return; // ← ya no chequeamos isLoading aquí
+    if (!hasMore) return; // ← ya no chequeamos isLoading aquí
 
-  const observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0] && entries[0].isIntersecting && !isLoadingRef.current) { // ← ref en su lugar
-        setCurrentPage(prev => {
-          const nextPage = prev + 1;
-          fetchProjects(searchTerm, nextPage);
-          return nextPage;
-        });
-      }
-    },
-    { threshold: 0.1 }
-  );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0] && entries[0].isIntersecting && !isLoadingRef.current) { // ← ref en su lugar
+          setCurrentPage(prev => {
+            const nextPage = prev + 1;
+            fetchProjects(searchTerm, nextPage);
+            return nextPage;
+          });
+        }
+      },
+      { threshold: 0.1 }
+    );
 
-  const el = sentinelRef.current;
-  if (el) observer.observe(el);
-  return () => { if (el) observer.unobserve(el); };
-}, [hasMore, searchTerm]); // ← isLoading eliminado de las dependencias
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+    return () => { if (el) observer.unobserve(el); };
+  }, [hasMore, searchTerm]); // ← isLoading eliminado de las dependencias
 
   const isEmpty = !isLoading && projects.length === 0;
+
+  // Agrupar proyectos por año
+  const groupedProjects = projects.reduce((acc, project) => {
+    const year = new Date(project.estreno).getFullYear(); // Asumiendo que cada proyecto tiene un campo "date"
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(project);
+    return acc;
+  }, {} as Record<number, ProjectWithCompany[]>);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,13 +98,20 @@ const ProyectosPage = () => {
 
         {/* Grid de Posters */}
         {!isEmpty && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onSelect={(p: any) => window.location.href = `/proyectos/${p.id}`}
-              />
+          <div className="space-y-8">
+            {Object.keys(groupedProjects).sort((a, b) => Number(b) - Number(a)).map((year) => (
+              <div key={year}>
+                <h2 className="text-2xl font-bold mb-4">{year}</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                  {groupedProjects[Number(year)].map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onSelect={(p: any) => window.location.href = `/proyectos/${p.id}`}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
