@@ -123,6 +123,42 @@ export const artistDetailRoute = {
     });
   },
 
+  PUT: async (req: BunRequest) => {
+    if(process.env.TRUST_CLIENT !== "true"){
+      return new Response(JSON.stringify({ error: "Edición de artistas deshabilitada en producción" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 403
+      });
+    }
+    const { id } = req.params as { id: string };
+    const body = await req.json();
+    const { nombre, matricula } = body;
+
+    console.log("Received data to update artist:", body);
+
+    if (!nombre) {
+      return new Response(JSON.stringify({ error: "El nombre es requerido" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    const matriculaValue = matricula === "" ? null : matricula;
+
+    const result = await pg`
+      UPDATE personas
+      SET nombre = ${nombre}, matricula = ${matriculaValue}
+      WHERE id = ${id}
+      RETURNING id, nombre, matricula, updated_at
+    `;
+
+    const updatedArtist = result[0];
+    return new Response(JSON.stringify(updatedArtist), {
+      headers: { "Content-Type": "application/json" },
+      status: 200
+    });
+  },
+
   DELETE: async (req: BunRequest) => {
     if(process.env.TRUST_CLIENT !== "true"){
       return new Response(JSON.stringify({ error: "Eliminación de artistas deshabilitada en producción" }), {

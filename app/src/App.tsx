@@ -29,8 +29,10 @@ export function App() {
         <Route path="/admin" element={<AdminPage />} />
         
         <Route path="/artistas" element={<ArtistasPage />} />
+        <Route path="/artistas/nuevo" element={<ArtistaForm />} />
         <Route path="/artistas/:id" element={<ArtistaProPage />} />
         <Route path="/artistas/:id/edit" element={<ArtistaForm />} />
+        
 
         <Route path="/companias" element={<CompaniesPage />} />
         <Route path="/companias/nuevo" element={<CompanyForm />} />

@@ -52,7 +52,7 @@ const ArtistaForm: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            const url = isEditMode ? `/api/artists/${id}` : `/api/artistas`;
+            const url = isEditMode ? `/api/artists/${id}` : `/api/artists`;
             const method = isEditMode ? 'PUT' : 'POST';
 
             const res = await fetch(url, {
@@ -125,7 +125,6 @@ const ArtistaForm: React.FC = () => {
                             </label>
                             <input
                                 type="text"
-                                required
                                 value={formData.matricula}
                                 onChange={(e) =>
                                     setFormData({ ...formData, matricula: e.target.value })
