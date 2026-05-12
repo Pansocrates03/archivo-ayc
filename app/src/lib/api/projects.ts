@@ -1,4 +1,4 @@
-import { pg, s3, ilovepdf } from "./services";
+import { pg, s3, ilovepdf, isAdmin } from "./services";
 import { 
   S3Client, 
   PutObjectCommand, 
@@ -126,14 +126,14 @@ async function uploadProjectFiles(projectId: string, formData: FormData) {
 // --- RUTAS DE LA API ---
 
 export const projectsRoute = {
-  GET: async (req: Request) => {
+  GET: async (req: BunRequest) => {
     const url = new URL(req.url);
     const page = url.searchParams.get('page') || '1';
     const search = url.searchParams.get('search') || '';
     const limit = 20; // Debe coincidir con el PAGE_SIZE del frontend
     const offset = (parseInt(page) - 1) * limit;
 
-    let rows;
+    let rows: {id: string, nombre: string, estreno: string, grupo_id: string, programa_url: string, thumbnail_url: string, youtube_url: string, company_name: string}[] = [];
     if (search) {
       rows = await pg`
         SELECT p.id, p.nombre, p.estreno, p.grupo_id, p.programa_url, p.thumbnail_url, p.youtube_url,
@@ -164,13 +164,13 @@ export const projectsRoute = {
     return new Response(JSON.stringify(proyectosConUrls), { headers: { "Content-Type": "application/json" }, status: 200 });
   },
 
-  POST: async (req: Request) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Creación de proyectos deshabilitada en producción" }), {
-        headers: { "Content-Type": "application/json" },
-        status: 403
-      });
-    }
+  POST: async (req: BunRequest) => {
+    if(!isAdmin(req)){
+          return new Response(JSON.stringify({ error: "Falta de permisos" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 403
+          });
+        }
     try {
       // 1. Extraer FormData (Ya no usamos req.json)
       const formData = await req.formData();
@@ -235,7 +235,7 @@ export const projectDetailRoute = {
     console.log("nfjkds")
     const { id } = req.params as { id: string };
     
-    const rows = await pg`
+    const rows: {id: string, proyecto_nombre:string, estreno:string, programa_url:string, thumbnail_url:string, galeria_urls:string[], youtube_url:string}[] = await pg`
       SELECT 
           p.id, p.nombre AS proyecto_nombre, p.estreno, p.programa_url, p.thumbnail_url, p.galeria_urls, p.youtube_url,
           g.id AS grupo_id, g.nombre AS grupo_nombre, g.tag AS grupo_tag,
@@ -267,8 +267,8 @@ export const projectDetailRoute = {
   },
 
   PUT: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Edición de proyectos deshabilitada en producción" }), {
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
@@ -330,13 +330,13 @@ export const projectDetailRoute = {
   },
 
   DELETE: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Eliminación de proyectos deshabilitada en producción" }), {
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
     }
-    
+
     const { id } = req.params as { id: string };
     console.log(`Iniciando eliminación del proyecto ${id}...`);
 

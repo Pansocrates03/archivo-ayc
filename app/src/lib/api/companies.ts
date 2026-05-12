@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun"; // o Request, dependiendo de tu router
-import { pg, s3 } from "./services";
+import { isAdmin, pg, s3 } from "./services";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 // --- CONFIGURACIÓN MINIO/TIGRIS ---
@@ -11,7 +11,7 @@ export const companiesRoute = {
     const url = new URL(req.url);
     const search = url.searchParams.get('search') || '';
 
-    const rows = await pg`
+    const rows: {id: string, tag: string, nombre: string, sede:string, disciplina:string, banner_url:string, created:string, updated:string }[] = await pg`
       SELECT * FROM grupos
       WHERE LOWER(unaccent("nombre")) LIKE LOWER('%' || ${search} || '%')
       ORDER BY "nombre" ASC`;
@@ -29,12 +29,13 @@ export const companiesRoute = {
   },
 
   POST: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Creación de compañías deshabilitada en producción" }), {
-        headers: { "Content-Type": "application/json" },
-        status: 403
-      });
-    }
+    if(!isAdmin(req)){
+          return new Response(JSON.stringify({ error: "Falta de permisos" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 403
+          });
+        }
+        
     try {
         // 1. Ahora leemos formData en lugar de JSON
         const formData = await req.formData();
@@ -126,8 +127,9 @@ export const companyDetailRoute = {
   },
 
   PUT: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Edición de compañías deshabilitada en producción" }), {
+
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
@@ -188,12 +190,13 @@ export const companyDetailRoute = {
   },
 
   DELETE: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Eliminación de compañías deshabilitada en producción" }), {
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
     }
+
     const { id } = req.params as { id: string };
     
     try {

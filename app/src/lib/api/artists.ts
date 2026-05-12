@@ -1,5 +1,6 @@
 import type { BunRequest } from "bun";
 import { pg } from "./services";
+import { isAdmin } from "./services";
 
 export const artistRoutes = {
   GET: async (req: BunRequest) => {
@@ -40,12 +41,14 @@ export const artistRoutes = {
   },
   
   POST: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Creación de artistas deshabilitada en producción" }), {
+
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
     }
+
     const body = await req.json();
     const { nombre, matricula } = body;
 
@@ -124,12 +127,14 @@ export const artistDetailRoute = {
   },
 
   PUT: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Edición de artistas deshabilitada en producción" }), {
+
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
     }
+
     const { id } = req.params as { id: string };
     const body = await req.json();
     const { nombre, matricula } = body;
@@ -160,12 +165,14 @@ export const artistDetailRoute = {
   },
 
   DELETE: async (req: BunRequest) => {
-    if(process.env.TRUST_CLIENT !== "true"){
-      return new Response(JSON.stringify({ error: "Eliminación de artistas deshabilitada en producción" }), {
+    
+    if(!isAdmin(req)){
+      return new Response(JSON.stringify({ error: "Falta de permisos" }), {
         headers: { "Content-Type": "application/json" },
         status: 403
       });
     }
+
     const { id } = req.params as { id: string };
     console.log(`Iniciando eliminación del artista con ID ${id}...`);
 

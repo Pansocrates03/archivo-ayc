@@ -1,4 +1,4 @@
-import { SQL } from "bun";
+import { SQL, type BunRequest } from "bun";
 import { S3Client } from "@aws-sdk/client-s3";
 
 if(!process.env.DATABASE_URL) {
@@ -22,6 +22,26 @@ export const s3 = new S3Client({
   credentials: { accessKeyId: process.env.S3_ACCESS_KEY || "minioadmin", secretAccessKey: process.env.S3_SECRET_KEY || "minioadmin" },
   forcePathStyle: IS_LOCAL,
 });
+
+// Verify Admin
+export const isAdmin = async (req: BunRequest): Promise<boolean> => {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+  const token = authHeader.slice(7);
+
+  console.log("Verificando token de admin:", token);
+
+  const result = await pg`
+    SELECT 1 FROM personas 
+    WHERE (matricula = ${token} AND  admin = TRUE) OR (nomina = ${token})
+    LIMIT 1`;
+
+  console.log("Resultado de verificación de admin:", result);
+
+  return !!result.length;
+};
 
 export const ilovepdf = {
   compressPdf: async (inputPath: string, outputPath: string): Promise<string> => {
