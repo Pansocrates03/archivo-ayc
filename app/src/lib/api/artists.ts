@@ -50,7 +50,7 @@ export const artistRoutes = {
     }
 
     const body = await req.json();
-    const { nombre, matricula } = body;
+    const { nombre, matricula, creditos } = body;
 
     console.log("Received data to create artist:", body);
 
@@ -70,6 +70,13 @@ export const artistRoutes = {
     `;
 
     const newArtist = result[0];
+
+    if (Array.isArray(creditos) && creditos.length > 0) {
+      for (const [index, c] of creditos.entries()) {
+        await pg`INSERT INTO creditos (proyecto_id, rol_id, persona_id, orden) VALUES (${c.proyecto_id}, ${c.rol_id}, ${newArtist.id}, ${index + 1})`;
+      }
+    }
+
     return new Response(JSON.stringify(newArtist), {
       headers: { "Content-Type": "application/json" },
       status: 201
@@ -106,7 +113,26 @@ export const artistDetailRoute = {
             WHERE c.persona_id = pe.id
           ), 
           '[]'::jsonb
-        ) AS trayectoria
+        ) AS trayectoria,
+        COALESCE(
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', c.id,
+                'proyecto_id', p.id,
+                'proyecto_nombre', p.nombre,
+                'rol_id', r.id,
+                'rol_nombre', r.nombre,
+                'categoria_rol', r.categoria
+              ) ORDER BY c.orden
+            )
+            FROM creditos c
+            JOIN proyectos p ON c.proyecto_id = p.id
+            JOIN roles r ON c.rol_id = r.id
+            WHERE c.persona_id = pe.id
+          ),
+          '[]'::jsonb
+        ) AS creditos
       FROM personas pe
       WHERE pe.id = ${id};
     `;
@@ -116,9 +142,6 @@ export const artistDetailRoute = {
       ...proyecto,
       thumbnail_url: proyecto.thumbnail_url ? `${BUCKET_URL}${proyecto.thumbnail_url}` : null,
     }));
-
-    // Crear biografía
-    // Ejemplo: Esteban Sierra es un (bailarin, actor, etc.), ha participado en
 
     return new Response(JSON.stringify(rows[0]), {
       headers: { "Content-Type": "application/json" },
@@ -137,7 +160,7 @@ export const artistDetailRoute = {
 
     const { id } = req.params as { id: string };
     const body = await req.json();
-    const { nombre, matricula } = body;
+    const { nombre, matricula, creditos } = body;
 
     console.log("Received data to update artist:", body);
 
@@ -150,15 +173,27 @@ export const artistDetailRoute = {
 
     const matriculaValue = matricula === "" ? null : matricula;
 
-    const result = await pg`
-      UPDATE personas
-      SET nombre = ${nombre}, matricula = ${matriculaValue}
-      WHERE id = ${id}
-      RETURNING id, nombre, matricula, updated_at
+    await pg.begin(async (sql) => {
+      await sql`
+        UPDATE personas
+        SET nombre = ${nombre}, matricula = ${matriculaValue}
+        WHERE id = ${id}
+      `;
+
+      await sql`DELETE FROM creditos WHERE persona_id = ${id}`;
+
+      if (Array.isArray(creditos) && creditos.length > 0) {
+        for (const [index, c] of creditos.entries()) {
+          await sql`INSERT INTO creditos (proyecto_id, rol_id, persona_id, orden) VALUES (${c.proyecto_id}, ${c.rol_id}, ${id}, ${index + 1})`;
+        }
+      }
+    });
+
+    const updatedArtist = await pg`
+      SELECT id, nombre, matricula, updated_at FROM personas WHERE id = ${id}
     `;
 
-    const updatedArtist = result[0];
-    return new Response(JSON.stringify(updatedArtist), {
+    return new Response(JSON.stringify(updatedArtist[0]), {
       headers: { "Content-Type": "application/json" },
       status: 200
     });

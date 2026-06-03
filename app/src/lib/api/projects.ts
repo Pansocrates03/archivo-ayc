@@ -396,6 +396,16 @@ export const projectDetailRoute = {
   }
 };
 
+export const allProjectsRoute = {
+  GET: async (req: BunRequest) => {
+    const rows = await pg`
+      SELECT id, nombre FROM proyectos ORDER BY nombre
+    `;
+    return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+};
+
+
 async function extractFirstPageAsPng(pdfPath: string, outputPath: string): Promise<string> {
   try {
     const pdfData = await Bun.file(pdfPath).arrayBuffer();

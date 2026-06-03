@@ -2,7 +2,7 @@ import { serve } from "bun";
 import index from "./index.html";
 import { artistRoutes, artistDetailRoute } from "./lib/api/artists";
 import { companiesRoute, companyDetailRoute } from "./lib/api/companies";
-import { projectsRoute, projectDetailRoute } from "./lib/api/projects";
+import { projectsRoute, projectDetailRoute, allProjectsRoute } from "./lib/api/projects";
 import { validateMatriculaRoute } from "./lib/api/validate";
 import { rolesRoute } from "./lib/api/roles";
 
@@ -16,6 +16,7 @@ const server = serve({
     "/api/companies": companiesRoute,
     "/api/companies/:id": companyDetailRoute,
     "/api/proyectos": projectsRoute,
+    "/api/all-proyectos": allProjectsRoute, // Alias for projectsRoute"
     "/api/proyectos/:id": projectDetailRoute,
     "/api/roles": rolesRoute,
     "/api/validate-matricula/:matricula": validateMatriculaRoute,
