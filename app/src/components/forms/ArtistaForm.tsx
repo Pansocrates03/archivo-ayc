@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, X } from 'lucide-react';
 import Header from '../Header';
+import { ArtistService } from '@/lib/services';
 
 interface Artista {
     id: string;
@@ -25,12 +26,7 @@ const ArtistaForm: React.FC = () => {
     useEffect(() => {
         console.log('IsEditMode:', isEditMode, 'ID:', id);
         if (isEditMode && id) {
-            fetch(`/api/artists/${id}`)
-                .then((res) => {
-                    if (!res.ok) throw new Error('Artista no encontrado');
-                    console.log('res', res);
-                    return res.json();
-                })
+            ArtistService.getById(id)
                 .then((data) => {
                     console.log('data', data);
                     setFormData({
@@ -52,16 +48,11 @@ const ArtistaForm: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            const url = isEditMode ? `/api/artists/${id}` : `/api/artists`;
-            const method = isEditMode ? 'PUT' : 'POST';
-
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            if (!res.ok) throw new Error('Error al guardar el artista');
+            if (isEditMode && id) {
+                await ArtistService.update(id, formData);
+            } else {
+                await ArtistService.create(formData);
+            }
 
             alert(`Artista ${isEditMode ? 'actualizado' : 'creado'} con éxito.`);
             navigate('/artistas');

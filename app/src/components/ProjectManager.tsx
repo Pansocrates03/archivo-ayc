@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Edit2, Save, X, Users, Upload, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
 import { timestampToDate } from '@/lib/utils';
+import { ProjectService, RoleService, CompanyService, ArtistService } from '@/lib/services';
 
 interface Rol { id: string; nombre: string; categoria: string; requerido: boolean; created_at: string; updated_at: string; }
 interface Compania { id: string; tag: string; nombre: string; sede: string | null; descripcion: string | null; disciplina: string; banner_url: string; created_at: string; updated_at: string; }
@@ -69,11 +70,10 @@ const ProjectManager: React.FC = () => {
   const [artistas, setArtistas] = useState<Artista[]>([]);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
 
-  // ... (Tus funciones fetchRoles, fetchCompanias, fetchArtistas, fetchProyectos, fetchCreditos se mantienen igual) ...
-  async function fetchRoles() { const res = await fetch('/api/roles'); const data = await res.json(); setRoles(data); }
-  async function fetchCompanias() { const res = await fetch('/api/companies'); const data = await res.json(); setCompanias(data); }
-  async function fetchArtistas() { const res = await fetch('/api/artists?nolimits=true'); const data = await res.json(); setArtistas(data); }
-  async function fetchProyectos() { const res = await fetch('/api/proyectos'); const data = await res.json(); data.map((p: any) => p.creditos = []); setProyectos(data); }
+  async function fetchRoles() { const data = await RoleService.list(); setRoles(data); }
+  async function fetchCompanias() { const data = await CompanyService.listAll(); setCompanias(data); }
+  async function fetchArtistas() { const data = await ArtistService.listAll(); setArtistas(data); }
+  async function fetchProyectos() { const data = await ProjectService.list('', 1); data.map((p: any) => p.creditos = []); setProyectos(data); }
   async function fetchCreditos(proyectoId: string) { /* ... tu lógica ... */ return []; }
 
   useEffect(() => {
@@ -134,18 +134,14 @@ const ProjectManager: React.FC = () => {
       }
 
       // 4. Enviamos a la API
-      const url = formData.id ? `/api/proyectos/${formData.id}` : `/api/proyectos`;
-      const method = formData.id ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method: method,
-        body: formDataToSend, // ¡Importante! No se usa "Content-Type: application/json" aquí
-      });
-
-      if (!res.ok) throw new Error("Error al guardar el proyecto");
+      if (formData.id) {
+        await ProjectService.update(formData.id, formDataToSend);
+      } else {
+        await ProjectService.create(formDataToSend);
+      }
       
       alert("Proyecto y archivos guardados con éxito.");
-      fetchProyectos(); // Recargamos la lista
+      await fetchProyectos(); // Recargamos la lista
       setView('list');
     } catch (error) {
       console.error(error);

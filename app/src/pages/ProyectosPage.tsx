@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import type { ProjectWithCompany } from '@/lib/types';
 import PageTitle from '@/components/PageTitle';
 import Footer from '@/components/Footer';
+import { ProjectService } from '@/lib/services';
 
 const PAGE_SIZE = 20; // debe coincidir con el limit del backend
 
@@ -28,11 +29,15 @@ const ProyectosPage = () => {
     isLoadingRef.current = true;
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/proyectos?search=${encodeURIComponent(search)}&page=${page}`);
-      const data: ProjectWithCompany[] = await response.json();
+      console.log("Fetching projects:", search, page);
+      const data: ProjectWithCompany[] = await ProjectService.list(search, page);
 
       setHasMore(data.length === PAGE_SIZE);
       setProjects(prev => replace ? data : [...prev, ...data]);
+    } catch (err: any) {
+      console.error('Error fetching projects:', err);
+      // If network error (e.g. "Failed to fetch"), stop further loads
+      setHasMore(false);
     } finally {
       isLoadingRef.current = false;
       setIsLoading(false);

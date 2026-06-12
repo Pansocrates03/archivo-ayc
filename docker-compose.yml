@@ -39,6 +39,23 @@ services:
       timeout: 5s
       retries: 5
 
+  imgproxy:
+    image: darthsim/imgproxy:latest
+    container_name: archivoayc_imgproxy
+    environment:
+      IMGPROXY_BASE_URL: http://minio:9000
+      IMGPROXY_USE_S3: "true"
+      IMGPROXY_S3_REGION: us-east-1
+      IMGPROXY_S3_ACCESS_KEY: minioadmin
+      IMGPROXY_S3_SECRET_KEY: minioadmin
+      IMGPROXY_S3_BUCKET: actec-bucket
+      IMGPROXY_S3_ENDPOINT: http://minio:9000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - minio
+    restart: unless-stopped
+
       # Para correr la app necesito RUN apt-get update && apt-get install -y poppler-utils
 
 volumes:

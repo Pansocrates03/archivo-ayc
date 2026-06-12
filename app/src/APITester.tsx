@@ -1,4 +1,5 @@
 import { useRef, type FormEvent } from "react";
+import { ApiService } from "./lib/services";
 
 export function APITester() {
   const responseInputRef = useRef<HTMLTextAreaElement>(null);
@@ -10,11 +11,9 @@ export function APITester() {
       const form = e.currentTarget;
       const formData = new FormData(form);
       const endpoint = formData.get("endpoint") as string;
-      const url = new URL(endpoint, location.href);
-      const method = formData.get("method") as string;
-      const res = await fetch(url, { method });
-
-      const data = await res.json();
+      const method = formData.get("method") as 'GET' | 'PUT' | 'POST' | 'DELETE';
+      
+      const data = await ApiService.fetch(endpoint, method);
       responseInputRef.current!.value = JSON.stringify(data, null, 2);
     } catch (error) {
       responseInputRef.current!.value = String(error);

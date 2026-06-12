@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Header from '@/components/Header';
 import { CircleUserRound, Building2, Clapperboard, Save } from "lucide-react";
 import ProjectManager from '../components/ProjectManager';
+import { ArtistService, CompanyService } from '@/lib/services';
 
 type TabType = 'compania' | 'artista' | 'proyecto';
 
@@ -13,40 +14,28 @@ const AdminPage: React.FC = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    fetch('/api/companies', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(responseData => {
+    try {
+      const responseData = await CompanyService.create(formData as any);
       console.log("Respuesta del backend al crear compañía:", responseData);
       alert(`Compañía "${responseData.nombre}" creada con ID: ${responseData.id}`);
-    })
-    .catch(error => {
+    } catch (error) {
       console.error("Error al crear compañía:", error);
       alert("Hubo un error al crear la compañía. Por favor, intenta de nuevo.");
-    });
+    }
   };
 
   const handleArtistaSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    fetch('/api/artists', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(responseData => {
+    try {
+      const responseData = await ArtistService.create(data as any);
       console.log("Respuesta del backend al crear artista:", responseData);
       alert(`Artista "${responseData.nombre}" creado con ID: ${responseData.id}`);
-    })
-    .catch(error => {
+    } catch (error) {
       console.error("Error al crear artista:", error);
       alert("Hubo un error al crear el artista. Por favor, intenta de nuevo.");
-    });
+    }
   };
 
   const handleProyectoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { timestampToDate } from "@/lib/utils";
 import { Edit } from "lucide-react";
+import { ProjectService, ApiService } from "@/lib/services";
 
 interface ProyectoProPageType {
   id: string;
@@ -26,20 +27,23 @@ interface ProyectoProPageType {
 export function ProyectoProPage() {
   const [proyecto, setProyecto] = useState<ProyectoProPageType | null>(null);
 
-  function proyectoClick() {
+  async function proyectoClick() {
     // proyecto &&  proyecto.programa_url && window.open(proyecto?.programa_url)
     const matricula = prompt("Por seguridad solo se mostrará el programa de mano completo a quienes han participado en este proyecto.\n\nIngresa tu matrícula o nómina para continuar:", "A0");
+    
+    if (!matricula) return;
 
-    fetch(`/api/validate-matricula/${matricula}`)
-    .then(res => res.json())
-    .then(data => {
+    try {
+      const data = await ApiService.fetch(`/api/validate-matricula/${matricula}`);
       if (data.valid) {
         window.open(proyecto?.programa_url, '_blank');
       } else {
         alert(`La matrícula "${matricula}" no se encuentra registrada.\nSi participaste en este proyecto envía un correo a e.s.baccio@gmail.com para registrar tu matrícula.`);
       }
-    })
-    
+    } catch (error) {
+      console.error('Error validating matricula:', error);
+      alert('Error al validar la matrícula.');
+    }
   }
 
   const defaultImage = "https://placehold.co/200x300?text=No+Image";
@@ -47,8 +51,8 @@ export function ProyectoProPage() {
   useEffect(() => {
           const fetchProyecto = async () => {
               const id = window.location.pathname.split("/").pop();
-              const response = await fetch(`/api/proyectos/${id}`);
-              const data = await response.json();
+              if (!id) return;
+              const data = await ProjectService.getById(id);
               console.log("Proyecto data:", data.creditos);
               setProyecto(data);
           };

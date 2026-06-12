@@ -5,6 +5,7 @@ import Header from "../Header";
 
 // Asumo que tienes esta función exportada en utils, como indicaste
 import { compressImage } from "@/lib/utils";
+import { CompanyService } from '@/lib/services';
 
 const CompanyForm = () => {
     // 1. HOOKS DE ENRUTAMIENTO
@@ -30,11 +31,7 @@ const CompanyForm = () => {
     useEffect(() => {
         if (isEditMode && id) {
             // Llama a tu endpoint de detalles de la compañía
-            fetch(`/api/companies/${id}`)
-                .then(res => {
-                    if (!res.ok) throw new Error("Compañía no encontrada");
-                    return res.json();
-                })
+            CompanyService.getById(id)
                 .then(data => {
                     setFormData({
                         id: data.id || '',
@@ -80,16 +77,11 @@ const CompanyForm = () => {
                 formDataToSend.append('banner', compressedFile);
             }
 
-            const url = isEditMode ? `/api/companies/${id}` : `/api/companies`;
-            const method = isEditMode ? 'PUT' : 'POST';
-
-            const res = await fetch(url, {
-                method: method,
-                // IMPORTANTE: Al usar FormData, fetch genera automáticamente el Content-Type "multipart/form-data"
-                body: formDataToSend 
-            });
-
-            if (!res.ok) throw new Error("Error al guardar la compañía");
+            if (isEditMode && id) {
+                await CompanyService.update(id, formDataToSend);
+            } else {
+                await CompanyService.create(formDataToSend);
+            }
             
             alert(`Compañía ${isEditMode ? 'actualizada' : 'creada'} con éxito.`);
             navigate(-1); // Regresa a la vista anterior

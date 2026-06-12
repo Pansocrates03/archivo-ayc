@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import PageTitle from "@/components/PageTitle";
 import type { Artist } from "@/lib/types";
 import Footer from "@/components/Footer";
+import { ArtistService } from "@/lib/services";
 
 export function ArtistasPage() {
   const [artistas, setArtistas] = useState<Artist[]>([]);
@@ -19,8 +20,7 @@ export function ArtistasPage() {
     if (isLoading) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/artists?search=${search}&page=${page}`);
-      const data: Artist[] = await response.json();
+      const data: Artist[] = await ArtistService.list(search, page);
 
       // Si devuelve menos items que el límite, no hay más páginas
       setHasMore(data.length === PAGE_SIZE);

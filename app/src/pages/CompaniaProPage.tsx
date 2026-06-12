@@ -2,6 +2,7 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ProjectCard from "@/components/ProjectCard";
 import { useEffect, useState } from "react";
+import { CompanyService } from "@/lib/services";
 
 interface CompaniaProPageType {
   id: string;
@@ -31,8 +32,8 @@ export function CompaniaProPage() {
 
   useEffect(() => {
     async function getCompany() {
-      const response = await fetch(`/api/companies/${companyId}`);
-      const data = await response.json();
+      if (!companyId) return;
+      const data = await CompanyService.getById(companyId);
       setCompany(data);
     }
     getCompany();
