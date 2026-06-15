@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import ProjectCard from "@/components/ProjectCard";
 import Footer from "@/components/Footer";
 import { ArtistService } from "@/lib/services";
+import { useNavigate } from "react-router-dom";
 
 interface ArtistaProPageType {
   id: string;
@@ -51,7 +52,7 @@ export function ArtistaProPage() {
               <ProjectCard 
                 key={project.id} 
                 project={project} 
-                onSelect={(p:any) => window.location.href = `/proyectos/${p.id}`} 
+                onSelect={(p:any) => useNavigate()(`/proyectos/${p.id}`)} 
               />
             ))}
           </div>

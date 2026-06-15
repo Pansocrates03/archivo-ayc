@@ -6,6 +6,7 @@ import type { ProjectWithCompany } from '@/lib/types';
 import PageTitle from '@/components/PageTitle';
 import Footer from '@/components/Footer';
 import { ProjectService } from '@/lib/services';
+import { useNavigate } from 'react-router-dom';
 
 const PAGE_SIZE = 20; // debe coincidir con el limit del backend
 
@@ -16,11 +17,9 @@ const ProyectosPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!window.location.href.includes('proyectos')) window.location.href = "/proyectos";
-  }, []); // Añadido [] para que solo corra una vez
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const isLoadingRef = useRef(false); // ← guardia síncrona
 
@@ -112,7 +111,7 @@ const ProyectosPage = () => {
                     <ProjectCard
                       key={project.id}
                       project={project}
-                      onSelect={(p: any) => window.location.href = `/proyectos/${p.id}`}
+                      onSelect={(p: any) => navigate(`/proyectos/${p.id}`)}
                     />
                   ))}
                 </div>

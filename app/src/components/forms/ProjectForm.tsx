@@ -52,7 +52,7 @@ const ProjectForm: React.FC = () => {
                         estreno: data.estreno ? new Date(data.estreno).toISOString().split('T')[0] : '',
                         // Mapeamos los créditos para el UI
                         creditos: (data.creditos || []).map((c: any) => ({
-                            id: c.credito_id || `temp_${Math.random()}`,
+                            id: c.credito_id || undefined,
                             rol_id: c.rol_id,
                             persona_id: c.persona_id
                         }))
@@ -67,7 +67,7 @@ const ProjectForm: React.FC = () => {
     }, [id, isEditMode, navigate]);
 
     // Funciones de créditos
-    const addCreditRow = () => setFormData(prev => ({ ...prev, creditos: [...prev.creditos, { id: `temp_${Date.now()}`, rol_id: '', persona_id: '' }] }));
+    const addCreditRow = () => setFormData(prev => ({ ...prev, creditos: [...prev.creditos, { id: undefined, rol_id: '', persona_id: '' }] }));
     const removeCreditRow = (creditId: string) => setFormData(prev => ({ ...prev, creditos: prev.creditos.filter(c => c.id !== creditId) }));
     const updateCredit = (creditId: string, field: string, value: string) => setFormData(prev => ({ ...prev, creditos: prev.creditos.map(c => c.id === creditId ? { ...c, [field]: value } : c) }));
 
@@ -81,6 +81,13 @@ const ProjectForm: React.FC = () => {
           formDataToSend.append('grupo_id', formData.grupo_id);
           formDataToSend.append('estreno', formData.estreno);
           formDataToSend.append('creditos', JSON.stringify(formData.creditos));
+
+          console.log("Form data to send:", {
+            nombre: formData.nombre,
+            grupo_id: formData.grupo_id,
+            estreno: formData.estreno,
+            creditos: formData.creditos
+          });
     
           if (programaFile) formDataToSend.append('programa', programaFile);
     

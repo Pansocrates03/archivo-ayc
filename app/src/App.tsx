@@ -29,18 +29,18 @@ export function App() {
         <Route path="/admin" element={<AdminPage />} />
         
         <Route path="/artistas" element={<ArtistasPage />} />
-        <Route path="/artistas/nuevo" element={<ArtistaForm />} />
+        <Route path="/artistas/new" element={<ArtistaForm />} />
         <Route path="/artistas/:id" element={<ArtistaProPage />} />
         <Route path="/artistas/:id/edit" element={<ArtistaForm />} />
         
 
         <Route path="/companias" element={<CompaniesPage />} />
-        <Route path="/companias/nuevo" element={<CompanyForm />} />
+        <Route path="/companias/new" element={<CompanyForm />} />
         <Route path="/companias/:id" element={<CompaniaProPage />} />
         <Route path="/companias/:id/edit" element={<CompanyForm />} />
 
         <Route path="/proyectos" element={<ProyectosPage />} />
-        <Route path="/proyectos/nuevo" element={<ProjectForm />} />
+        <Route path="/proyectos/new" element={<ProjectForm />} />
         <Route path="/proyectos/:id" element={<ProyectoProPage />} />
         <Route path="/proyectos/:id/edit" element={<ProjectForm />} />
       </Routes>

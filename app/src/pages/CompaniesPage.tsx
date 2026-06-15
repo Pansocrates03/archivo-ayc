@@ -6,11 +6,13 @@ import PageTitle from '@/components/PageTitle';
 import type { Company } from '@/lib/types';
 import Footer from '../components/Footer';
 import { CompanyService } from '@/lib/services';
+import { useNavigate } from 'react-router-dom';
 
 // DATOS DE PRUEBA (Mock Data) para visualizar el ejemplo nacional
 
 const CompaniesPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const navigate = useNavigate();
 
   async function getCompanies(search = "") {
     const data = await CompanyService.list(search);
@@ -26,7 +28,7 @@ const CompaniesPage = () => {
 
   // Función al seleccionar una compañía
   const handleSelectCompany = (company: any) => {
-    window.location.href = `/companias/${company.tag}`;
+    navigate(`/companias/${company.tag}`);
   };
 
   return (

@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import ProjectCard from "@/components/ProjectCard";
 import { useEffect, useState } from "react";
 import { CompanyService } from "@/lib/services";
+import { useNavigate } from "react-router-dom";
 
 interface CompaniaProPageType {
   id: string;
@@ -26,6 +27,7 @@ export function CompaniaProPage() {
 
   const url = new URL(window.location.href);
   const companyId = url.pathname.split("/").pop();
+  const navigate = useNavigate();
 
   const [company, setCompany] = useState<CompaniaProPageType | null>(null);
   const [isHovering, setIsHovering] = useState(false);
@@ -95,7 +97,7 @@ export function CompaniaProPage() {
                 <ProjectCard 
                   key={project.id} 
                   project={project} 
-                  onSelect={(p:any) => window.location.href = `/proyectos/${p.id}`} 
+                  onSelect={(p:any) => navigate(`/proyectos/${p.id}`)} 
                 />
               ))}
             </div>

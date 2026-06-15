@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { timestampToDate } from "@/lib/utils";
 import { Edit } from "lucide-react";
 import { ProjectService, ApiService } from "@/lib/services";
+import { useNavigate } from "react-router-dom";
 
 interface ProyectoProPageType {
   id: string;
@@ -47,6 +48,7 @@ export function ProyectoProPage() {
   }
 
   const defaultImage = "https://placehold.co/200x300?text=No+Image";
+  const navigate = useNavigate();
 
   useEffect(() => {
           const fetchProyecto = async () => {
@@ -95,7 +97,10 @@ export function ProyectoProPage() {
             <span className="text-gray-500 font-bold">DIR. GENERAL: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_nombre === "Dirección General").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+              >{cred.persona_nombre}, </a>
           )}
 
           {/* ASISTENTE DE DIRECCIÓN */}
@@ -103,14 +108,20 @@ export function ProyectoProPage() {
             <span className="text-gray-500 font-bold">A. de Dirección: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_nombre === "Asistente de Dirección").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+              >{cred.persona_nombre}, </a>
           )}
           {/* DIRECCIÓN COREOGRÁFICA */}
           {proyecto?.creditos.filter(c => c.rol_nombre === "Dirección Coreográfica").length! > 0 && (
             <span className="text-gray-500 font-bold">Dir. Coreográfica: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_nombre === "Dirección Coreográfica").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+              >{cred.persona_nombre}, </a>
           )}
         </div>
 
@@ -129,7 +140,12 @@ export function ProyectoProPage() {
             <span className="text-gray-500 font-bold">ACTORES: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_id === "rol_actores").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+            >
+              {cred.persona_nombre}, 
+            </a>
           )}
 
           {/* BAILARINES */}
@@ -137,7 +153,12 @@ export function ProyectoProPage() {
             <span className="text-gray-500 font-bold">BAILARINES: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_id === "rol_bailari").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+            >
+              {cred.persona_nombre}, 
+            </a>
           )}
 
           {/* CANTANTES */}
@@ -145,7 +166,12 @@ export function ProyectoProPage() {
             <span className="text-gray-500 font-bold">CANTANTES: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_id === "rol_cantant").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+            >
+              {cred.persona_nombre}, 
+            </a>
           )}
 
           {/* MÚSICOS */}
@@ -153,7 +179,12 @@ export function ProyectoProPage() {
             <span className="text-gray-500 font-bold">MÚSICOS: </span>
           )}
           {proyecto?.creditos.filter(c => c.rol_id === "rol_musicos").map((cred) =>
-            <a className="hover:text-blue-500" href={`/artistas/${cred.persona_id}`}>{cred.persona_nombre}, </a>
+            <a
+              className="hover:text-blue-500"
+              onClick={() => navigate(`/artistas/${cred.persona_id}`)}
+            >
+              {cred.persona_nombre}, 
+            </a>
           )}
 
 

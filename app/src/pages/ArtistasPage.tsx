@@ -5,6 +5,7 @@ import PageTitle from "@/components/PageTitle";
 import type { Artist } from "@/lib/types";
 import Footer from "@/components/Footer";
 import { ArtistService } from "@/lib/services";
+import { useNavigate } from "react-router-dom";
 
 export function ArtistasPage() {
   const [artistas, setArtistas] = useState<Artist[]>([]);
@@ -13,6 +14,7 @@ export function ArtistasPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
+  const navigate = useNavigate();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const PAGE_SIZE = 50; // debe coincidir con el limit del backend
 
@@ -70,7 +72,7 @@ export function ArtistasPage() {
   }, [hasMore, isLoading, searchTerm]);
 
   const onSelect = (artist: Artist) => {
-    window.location.href = `/artistas/${artist.id}`;
+    navigate(`/artistas/${artist.id}`);
   };
 
   return (
