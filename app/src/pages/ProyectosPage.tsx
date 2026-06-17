@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Clapperboard } from 'lucide-react';
 import ProjectCard from '../components/ProjectCard';
 import Header from '@/components/Header';
-import type { ProjectWithCompany } from '@/lib/types';
+import type { ProjectDetail } from '@/lib/types';
 import PageTitle from '@/components/PageTitle';
 import Footer from '@/components/Footer';
 import { ProjectService } from '@/lib/services';
@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 const PAGE_SIZE = 20; // debe coincidir con el limit del backend
 
 const ProyectosPage = () => {
-  const [projects, setProjects] = useState<ProjectWithCompany[]>([]);
+  const [projects, setProjects] = useState<ProjectDetail[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +29,8 @@ const ProyectosPage = () => {
     setIsLoading(true);
     try {
       console.log("Fetching projects:", search, page);
-      const data: ProjectWithCompany[] = await ProjectService.list(search, page);
+      const data: ProjectDetail[] = await ProjectService.list(search, page);
+      console.log("Fetched projects:", data[0]);
 
       setHasMore(data.length === PAGE_SIZE);
       setProjects(prev => replace ? data : [...prev, ...data]);
@@ -86,7 +87,7 @@ const ProyectosPage = () => {
     if (!acc[year]) acc[year] = [];
     acc[year].push(project);
     return acc;
-  }, {} as Record<number, ProjectWithCompany[]>);
+  }, {} as Record<number, ProjectDetail[]>);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -107,7 +108,7 @@ const ProyectosPage = () => {
               <div key={year}>
                 <h2 className="text-2xl font-bold mb-4">{year}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                  {groupedProjects[Number(year)].map((project) => (
+                  {(groupedProjects[Number(year)] || []).map((project) => (
                     <ProjectCard
                       key={project.id}
                       project={project}

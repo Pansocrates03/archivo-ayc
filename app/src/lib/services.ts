@@ -154,6 +154,12 @@ export const ProjectService = {
     );
   },
 
+  listAll: async (search: string = '', page: number = -1) => {
+    return apiCall(
+      `/api/proyectos?search=${encodeURIComponent(search)}&page=${page}`
+    );
+  },
+
   /**
    * Obtiene los detalles de un proyecto específico
    */

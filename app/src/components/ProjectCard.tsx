@@ -1,9 +1,9 @@
 import React from 'react';
 import { Calendar, Theater } from 'lucide-react';
-import type { Project, ProjectWithCompany } from '@/lib/types';
+import type { ProjectDetail } from '@/lib/types';
 import { timestampToDate } from '@/lib/utils';
 
-const ProjectCard: React.FC<{ project: ProjectWithCompany; onSelect: (project: any) => void }> = ({ project, onSelect }) => {
+const ProjectCard: React.FC<{ project: ProjectDetail; onSelect: (project: any) => void }> = ({ project, onSelect }) => {
   // project: { id, titulo, compania, fecha, posterUrl, disciplina }
 
   return (

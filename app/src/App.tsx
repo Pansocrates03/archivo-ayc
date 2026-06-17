@@ -1,17 +1,14 @@
-
-import AdminPage from "./pages/AdminPage";
-
 import CompaniesPage from "./pages/CompaniesPage"
 import ArtistasPage from "./pages/ArtistasPage";
 import ProyectosPage from "./pages/ProyectosPage";
 
-import ArtistaProPage from "./pages/ArtistaProPage";
-import ProyectoProPage from "./pages/ProyectoProPage";
-import CompaniaProPage from "./pages/CompaniaProPage";
+import ArtistaProPage from "./pages/ArtistaDetailPage";
+import ProyectoProPage from "./pages/ProyectoDetailPage";
+import CompaniaProPage from "./pages/CompaniaDetailPage";
 
-import ProjectForm from "./components/forms/ProjectForm";
-import CompanyForm from "./components/forms/CompanyForm";
-import ArtistaForm from "./components/forms/ArtistaForm";
+import ProjectForm from "./pages/ProyectoFormPage";
+import CompanyForm from "./pages/CompaniaFormPage";
+import ArtistaForm from "./pages/ArtistaFormPage";
 
 import "./index.css";
 
@@ -26,7 +23,6 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<ProyectosPage />} />
-        <Route path="/admin" element={<AdminPage />} />
         
         <Route path="/artistas" element={<ArtistasPage />} />
         <Route path="/artistas/new" element={<ArtistaForm />} />

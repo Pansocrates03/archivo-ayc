@@ -4,24 +4,7 @@ import ProjectCard from "@/components/ProjectCard";
 import { useEffect, useState } from "react";
 import { CompanyService } from "@/lib/services";
 import { useNavigate } from "react-router-dom";
-
-interface CompaniaProPageType {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  sede: string | null;
-  disciplina: string;
-  banner_url: string;
-  proyectos: {
-      id: string;
-      nombre: string;
-      estreno: string;
-      youtube_url: string;
-      programa_url: string;
-      thumbnail_url: string;
-      disciplina: string;
-    }[];
-}
+import type { CompanyDetail } from "@/lib/types";
 
 export function CompaniaProPage() {
 
@@ -29,13 +12,14 @@ export function CompaniaProPage() {
   const companyId = url.pathname.split("/").pop();
   const navigate = useNavigate();
 
-  const [company, setCompany] = useState<CompaniaProPageType | null>(null);
+  const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     async function getCompany() {
       if (!companyId) return;
       const data = await CompanyService.getById(companyId);
+      console.log("Fetched company:", data);
       setCompany(data);
     }
     getCompany();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Save, X, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
-import Header from "../Header";
+import Header from "../components/Header";
 
 // Asumo que tienes esta función exportada en utils, como indicaste
 import { compressImage } from "@/lib/utils";

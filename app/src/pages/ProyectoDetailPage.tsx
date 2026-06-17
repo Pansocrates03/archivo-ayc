@@ -55,7 +55,6 @@ export function ProyectoProPage() {
               const id = window.location.pathname.split("/").pop();
               if (!id) return;
               const data = await ProjectService.getById(id);
-              console.log("Proyecto data:", data.creditos);
               setProyecto(data);
           };
   
