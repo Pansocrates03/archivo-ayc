@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 
 export function ArtistaProPage() {
     const [artist, setArtist] = useState<ArtistDetail | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchArtist = async () => {
@@ -35,7 +36,7 @@ export function ArtistaProPage() {
               <ProjectCard 
                 key={credito.id} 
                 project={credito.proyecto} 
-                onSelect={(p:any) => useNavigate()(`/proyectos/${p.id}`)} 
+                onSelect={(p:any) => navigate(`/proyectos/${p.id}`)} 
               />
             ))}
           </div>
