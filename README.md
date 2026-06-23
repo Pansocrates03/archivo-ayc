@@ -1,4 +1,4 @@
-# Archivo Cultural del Tec de Monterrey
+# Programas de mano históricos del Tec de Monterrey
 Este proyecto busca preservar los proyectos profesionales realizados por el tecnológico de monterrey.
 
 ![alt text](image-1.png)
